@@ -1,0 +1,9 @@
+"txid","refid","time","type","subtype","aclass","asset","wallet","amount","fee","balance"
+"LQ1AAA-11111-AAAAAA","QCC1111-AAAA-BBBBBB","2026-02-10 08:55:02","deposit","","currency","ZEUR","spot / main",1000.0000,0.0000,1000.0000
+"LQ2BBB-22222-BBBBBB","TQ2222-CCCC-DDDDDD","2026-02-10 09:10:31","trade","","currency","ZEUR","spot / main",-500.0000,1.3000,498.7000
+"LQ3CCC-33333-CCCCCC","TQ2222-CCCC-DDDDDD","2026-02-10 09:10:31","trade","","currency","XXBT","spot / main",0.0055000000,0.0000000000,0.0055000000
+"LQ4DDD-44444-DDDDDD","TQ3333-EEEE-FFFFFF","2026-04-18 13:40:00","trade","","currency","XETH","spot / main",-0.2000000000,0.0000000000,0.0000000000
+"LQ5EEE-55555-EEEEEE","TQ3333-EEEE-FFFFFF","2026-04-18 13:40:00","trade","","currency","XXBT","spot / main",0.0061000000,0.0000000000,0.0116000000
+"LQ6FFF-66666-FFFFFF","TQ4444-GGGG-HHHHHH","2026-09-01 15:02:47","trade","","currency","ZEUR","spot / main",310.0000,0.8100,807.8900
+"LQ7GGG-77777-GGGGGG","TQ4444-GGGG-HHHHHH","2026-09-01 15:02:47","trade","","currency","XXBT","spot / main",-0.0040000000,0.0000000000,0.0076000000
+"LQ8HHH-88888-HHHHHH","WQ5555-IIII-JJJJJJ","2026-09-02 10:00:00","withdrawal","","currency","ZEUR","spot / main",-800.0000,0.0900,7.8000

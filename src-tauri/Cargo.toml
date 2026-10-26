@@ -1,6 +1,6 @@
 [package]
 name = "kripto-ado"
-version = "0.1.0"
+version = "0.2.0"
 description = "Kripto befizetések nyilvántartása és SZJA számítás MNB árfolyamon"
 authors = ["you"]
 edition = "2024"
@@ -25,6 +25,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 ureq = "2.12"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 calamine = "0.37"
+csv = "1"
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

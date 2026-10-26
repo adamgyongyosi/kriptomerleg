@@ -103,8 +103,12 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
       const saved = editing ? await api.updateTransaction(editing.id, input) : await api.addTransaction(input);
       onSaved(saved);
       if (!editing) {
+        // Új tételnél mindig EUR az alapértelmezett.
         setAmountText("");
         setNote("");
+        setCurrency("EUR");
+        setEditRate(false);
+        setManualRate("");
         setPreview(null);
         amountRef.current?.focus();
       }
@@ -131,9 +135,9 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
         </button>
       </div>
 
-      <label className="amount-field">
+      <div className="amount-field">
         <span className="label">Összeg</span>
-        <div className="amount-box">
+        <div className="amount-box" onClick={() => amountRef.current?.focus()}>
           <input
             ref={amountRef}
             inputMode="decimal"
@@ -143,20 +147,34 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
             onChange={(e) => onAmountChange(e.target.value)}
             aria-label="Összeg"
           />
-          <select
-            value={currency}
-            onChange={(e) => {
-              setCurrency(e.target.value as Currency);
-              setEditRate(false);
-              setManualRate("");
-            }}
-            aria-label="Deviza"
-          >
-            <option value="EUR">EUR</option>
-            <option value="HUF">Ft</option>
-          </select>
+          <div className="ccy-toggle" role="radiogroup" aria-label="Deviza" onClick={(e) => e.stopPropagation()}>
+            {(
+              [
+                ["EUR", "€", "EUR"],
+                ["HUF", "Ft", "Forint"],
+              ] as const
+            ).map(([code, symbol, title]) => (
+              <button
+                key={code}
+                type="button"
+                role="radio"
+                aria-checked={currency === code}
+                title={title}
+                className={currency === code ? "on" : ""}
+                onClick={() => {
+                  if (currency === code) return;
+                  setCurrency(code as Currency);
+                  setEditRate(false);
+                  setManualRate("");
+                  amountRef.current?.focus();
+                }}
+              >
+                {symbol}
+              </button>
+            ))}
+          </div>
         </div>
-      </label>
+      </div>
 
       <div className="meta-row">
         <label className="field">

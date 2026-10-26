@@ -25,6 +25,31 @@ export interface Tx {
   rateDate: string | null;
   huf: number;
   note: string;
+  /** "kézi", "excel", "binance", "kraken", "revolut", "bybit" */
+  source: string;
+  /** "deposit" | "withdrawal" | "buy" | "sell" */
+  kind: string;
+  fee: number;
+}
+
+export interface ImportRow {
+  key: string;
+  date: string;
+  currency: string;
+  kind: "buy" | "sell";
+  amount: number;
+  fee: number;
+  count: number;
+}
+
+export interface ImportPreview {
+  source: string;
+  format: string;
+  rows: ImportRow[];
+  existing: number;
+  ignored: number;
+  warnings: string[];
+  manualInYears: { year: number; count: number }[];
 }
 
 export interface TxInput {
@@ -71,12 +96,36 @@ export const api = {
     invoke<YearSummary | null>("preview_tax", { tx }),
   importExcel: (path: string) => invoke<{ imported: number; skipped: number }>("import_excel", { path }),
   exportCsv: (path: string) => invoke<void>("export_csv", { path }),
+  previewImport: (path: string) => invoke<ImportPreview>("preview_import", { path }),
+  commitImport: (source: string, rows: ImportRow[]) =>
+    invoke<{ imported: number; skipped: number }>("commit_import", { source, rows }),
+  deleteBySource: (source: string, year: number | null) => invoke<number>("delete_by_source", { source, year }),
 };
 
 const huf = new Intl.NumberFormat("hu-HU", { maximumFractionDigits: 0 });
 const dec = new Intl.NumberFormat("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const fmtFt = (n: number) => `${huf.format(n)} Ft`;
+export const SOURCE_LABEL: Record<string, string> = {
+  kézi: "Kézi",
+  excel: "Excel",
+  binance: "Binance",
+  kraken: "Kraken",
+  revolut: "Revolut",
+  bybit: "Bybit",
+};
+
+export function kindLabel(t: { kind: string; amount: number }): string {
+  switch (t.kind) {
+    case "buy":
+      return "Vétel";
+    case "sell":
+      return "Eladás";
+    default:
+      return t.amount > 0 ? "Befizetés" : "Kivétel";
+  }
+}
+
 /** Fizetendő adó; negatív esetén "… visszajár". */
 export const fmtTax = (n: number) => (n < 0 ? `${fmtFt(-n)} visszajár` : fmtFt(n));
 export const fmtRate = (n: number) => dec.format(n);

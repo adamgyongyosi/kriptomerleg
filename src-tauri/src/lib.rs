@@ -1,4 +1,5 @@
 mod excel;
+mod import;
 mod mnb;
 mod tax;
 
@@ -31,6 +32,12 @@ struct Tx {
     rate_date: Option<String>,
     huf: i64,
     note: String,
+    /// "kézi", "excel", "binance", "kraken", "revolut", "bybit".
+    source: String,
+    /// "deposit" / "withdrawal" (kézi), "buy" / "sell" (tőzsdei import).
+    kind: String,
+    /// Ebből a díj a tétel devizájában (tájékoztató).
+    fee: f64,
 }
 
 #[derive(Deserialize)]
@@ -79,7 +86,25 @@ fn init_db(conn: &Connection) -> rusqlite::Result<()> {
             rate     REAL NOT NULL,
             PRIMARY KEY (currency, date)
         );",
-    )
+    )?;
+    let version: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    if version < 1 {
+        conn.execute_batch(
+            "ALTER TABLE transactions ADD COLUMN source TEXT NOT NULL DEFAULT 'kézi';
+            ALTER TABLE transactions ADD COLUMN kind TEXT NOT NULL DEFAULT '';
+            ALTER TABLE transactions ADD COLUMN fee REAL NOT NULL DEFAULT 0;
+            ALTER TABLE transactions ADD COLUMN external_id TEXT;
+            CREATE UNIQUE INDEX IF NOT EXISTS transactions_external ON transactions(external_id);
+            UPDATE transactions SET source = 'excel' WHERE note = 'Excel import';
+            UPDATE transactions SET kind = CASE WHEN amount > 0 THEN 'deposit' ELSE 'withdrawal' END WHERE kind = '';
+            PRAGMA user_version = 1;",
+        )?;
+    }
+    Ok(())
+}
+
+fn manual_kind(amount: f64) -> &'static str {
+    if amount > 0.0 { "deposit" } else { "withdrawal" }
 }
 
 fn parse_date(s: &str) -> Result<NaiveDate, String> {
@@ -155,10 +180,13 @@ fn row_to_tx(r: &rusqlite::Row) -> rusqlite::Result<Tx> {
         rate_date: r.get(6)?,
         huf: r.get(7)?,
         note: r.get(8)?,
+        source: r.get(9)?,
+        kind: r.get(10)?,
+        fee: r.get(11)?,
     })
 }
 
-const TX_COLUMNS: &str = "id, date, currency, amount, rate, rate_source, rate_date, huf, note";
+const TX_COLUMNS: &str = "id, date, currency, amount, rate, rate_source, rate_date, huf, note, source, kind, fee";
 
 fn load_tx(conn: &Connection, id: i64) -> Result<Tx, String> {
     conn.query_row(&format!("SELECT {TX_COLUMNS} FROM transactions WHERE id = ?1"), [id], row_to_tx)
@@ -231,9 +259,9 @@ async fn add_transaction(state: State<'_, AppState>, input: TxInput) -> Result<T
     let (date, currency, rate, source, rate_date, huf) = resolve(&state.db, &input).await?;
     let conn = state.db.lock().unwrap();
     conn.execute(
-        "INSERT INTO transactions (date, currency, amount, rate, rate_source, rate_date, huf, note)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![date.to_string(), currency, input.amount, rate, source, rate_date, huf, input.note.as_deref().unwrap_or("").trim()],
+        "INSERT INTO transactions (date, currency, amount, rate, rate_source, rate_date, huf, note, source, kind)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'kézi', ?9)",
+        params![date.to_string(), currency, input.amount, rate, source, rate_date, huf, input.note.as_deref().unwrap_or("").trim(), manual_kind(input.amount)],
     )
     .map_err(err)?;
     load_tx(&conn, conn.last_insert_rowid())
@@ -245,8 +273,10 @@ async fn update_transaction(state: State<'_, AppState>, id: i64, input: TxInput)
     let conn = state.db.lock().unwrap();
     conn.execute(
         "UPDATE transactions SET date = ?1, currency = ?2, amount = ?3, rate = ?4, rate_source = ?5,
-                rate_date = ?6, huf = ?7, note = ?8 WHERE id = ?9",
-        params![date.to_string(), currency, input.amount, rate, source, rate_date, huf, input.note.as_deref().unwrap_or("").trim(), id],
+                rate_date = ?6, huf = ?7, note = ?8,
+                kind = CASE WHEN kind IN ('buy', 'sell') THEN (CASE WHEN ?3 > 0 THEN 'buy' ELSE 'sell' END) ELSE ?10 END
+         WHERE id = ?9",
+        params![date.to_string(), currency, input.amount, rate, source, rate_date, huf, input.note.as_deref().unwrap_or("").trim(), id, manual_kind(input.amount)],
     )
     .map_err(err)?;
     load_tx(&conn, id)
@@ -288,14 +318,172 @@ fn import_excel(state: State<'_, AppState>, path: String) -> Result<ImportResult
             continue;
         }
         conn.execute(
-            "INSERT INTO transactions (date, currency, amount, rate, rate_source, rate_date, huf, note)
-             VALUES (?1, 'HUF', ?2, 1, '-', NULL, ?3, 'Excel import')",
-            params![date.to_string(), huf as f64, huf],
+            "INSERT INTO transactions (date, currency, amount, rate, rate_source, rate_date, huf, note, source, kind)
+             VALUES (?1, 'HUF', ?2, 1, '-', NULL, ?3, 'Excel import', 'excel', ?4)",
+            params![date.to_string(), huf as f64, huf, manual_kind(huf as f64)],
         )
         .map_err(err)?;
         imported += 1;
     }
     Ok(ImportResult { imported, skipped })
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct YearCount {
+    year: i32,
+    count: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ImportPreview {
+    source: String,
+    format: String,
+    rows: Vec<import::ImportRow>,
+    /// Ennyi összevont tétel már szerepel az adatbázisban (újraimportáláskor frissül).
+    existing: usize,
+    /// A kihagyott (nem fiat ↔ kripto) sorok száma.
+    ignored: usize,
+    warnings: Vec<String>,
+    /// Kézzel vagy Excelből rögzített tételek az érintett években – duplán számolhatnak.
+    manual_in_years: Vec<YearCount>,
+}
+
+/// Tőzsdei/banki export beolvasása előnézetre (még nem ment semmit).
+#[tauri::command(async)]
+fn preview_import(state: State<'_, AppState>, path: String) -> Result<ImportPreview, String> {
+    let parsed = import::parse_file(&path)?;
+    let rows = import::aggregate(parsed.source, &parsed.flows);
+    if rows.is_empty() {
+        return Err(format!(
+            "A fájlban ({}) nem találtam fiat ↔ kripto ügyletet. {} sort hagytam ki (befizetés, kifizetés, kripto–kripto csere stb.).",
+            parsed.format, parsed.ignored
+        ));
+    }
+    let conn = state.db.lock().unwrap();
+    let mut existing = 0;
+    for r in &rows {
+        let found: bool = conn
+            .query_row("SELECT EXISTS(SELECT 1 FROM transactions WHERE external_id = ?1)", [&r.key], |x| x.get(0))
+            .map_err(err)?;
+        existing += usize::from(found);
+    }
+    let years: std::collections::BTreeSet<i32> = rows.iter().filter_map(|r| r.date[..4].parse().ok()).collect();
+    let mut manual_in_years = Vec::new();
+    for year in years {
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM transactions WHERE source IN ('kézi', 'excel') AND substr(date, 1, 4) = ?1",
+                [year.to_string()],
+                |x| x.get(0),
+            )
+            .map_err(err)?;
+        if count > 0 {
+            manual_in_years.push(YearCount { year, count });
+        }
+    }
+    Ok(ImportPreview {
+        source: parsed.source.into(),
+        format: parsed.format.into(),
+        rows,
+        existing,
+        ignored: parsed.ignored,
+        warnings: parsed.warnings,
+        manual_in_years,
+    })
+}
+
+/// A kiválasztott összevont tételek mentése MNB árfolyammal. A már meglévő kulcsú tételeket frissíti.
+#[tauri::command]
+async fn commit_import(state: State<'_, AppState>, source: String, rows: Vec<import::ImportRow>) -> Result<ImportResult, String> {
+    // Devizánként egyetlen MNB lekérés a teljes időszakra.
+    let mut ranges: BTreeMap<String, (NaiveDate, NaiveDate)> = BTreeMap::new();
+    for r in rows.iter().filter(|r| r.currency != "HUF") {
+        let d = parse_date(&r.date)?;
+        let e = ranges.entry(r.currency.clone()).or_insert((d, d));
+        e.0 = e.0.min(d);
+        e.1 = e.1.max(d);
+    }
+    for (currency, (from, to)) in ranges {
+        let cur = currency.clone();
+        let days = tauri::async_runtime::spawn_blocking(move || mnb::fetch_range(&cur, from - Duration::days(14), to))
+            .await
+            .map_err(err)??;
+        let conn = state.db.lock().unwrap();
+        for (d, rate) in &days {
+            conn.execute(
+                "INSERT OR REPLACE INTO rates (currency, date, rate) VALUES (?1, ?2, ?3)",
+                params![currency, d.to_string(), rate],
+            )
+            .map_err(err)?;
+        }
+    }
+
+    let conn = state.db.lock().unwrap();
+    let (mut imported, mut updated) = (0, 0);
+    for r in &rows {
+        let (rate, rate_source, rate_date): (f64, &str, Option<String>) = if r.currency == "HUF" {
+            (1.0, "-", None)
+        } else {
+            let (d, rate): (String, f64) = conn
+                .query_row(
+                    "SELECT date, rate FROM rates WHERE currency = ?1 AND date <= ?2 ORDER BY date DESC LIMIT 1",
+                    params![r.currency, r.date],
+                    |x| Ok((x.get(0)?, x.get(1)?)),
+                )
+                .map_err(|_| format!("Nincs MNB {} árfolyam erre a napra: {}", r.currency, r.date))?;
+            (rate, "MNB", Some(d))
+        };
+        // Vétel = kiadás (pozitív), eladás = bevétel (negatív), mint a kézi tételeknél.
+        let amount = if r.kind == "buy" { r.amount } else { -r.amount };
+        let huf = (amount * rate).round() as i64;
+        let label = match r.kind.as_str() {
+            "buy" => "vétel",
+            _ => "eladás",
+        };
+        let mut note = format!("{} · {} {label}", capitalize(&source), r.count);
+        if r.fee > 0.0 {
+            note.push_str(&format!(" · díj {} {}", hu_num(r.fee, 2), r.currency));
+        }
+        let exists: bool = conn
+            .query_row("SELECT EXISTS(SELECT 1 FROM transactions WHERE external_id = ?1)", [&r.key], |x| x.get(0))
+            .map_err(err)?;
+        conn.execute(
+            UPSERT_IMPORTED,
+            params![r.date, r.currency, amount, rate, rate_source, rate_date, huf, note, source, r.kind, r.fee, r.key],
+        )
+        .map_err(err)?;
+        if exists { updated += 1 } else { imported += 1 }
+    }
+    Ok(ImportResult { imported, skipped: updated })
+}
+
+const UPSERT_IMPORTED: &str = "INSERT INTO transactions
+        (date, currency, amount, rate, rate_source, rate_date, huf, note, source, kind, fee, external_id)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+    ON CONFLICT(external_id) DO UPDATE SET
+        date = excluded.date, currency = excluded.currency, amount = excluded.amount, rate = excluded.rate,
+        rate_source = excluded.rate_source, rate_date = excluded.rate_date, huf = excluded.huf,
+        note = excluded.note, kind = excluded.kind, fee = excluded.fee";
+
+fn capitalize(s: &str) -> String {
+    let mut c = s.chars();
+    c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default()
+}
+
+/// Egy forrásból (pl. "binance") importált tételek törlése, opcionálisan egy évre szűkítve.
+#[tauri::command]
+fn delete_by_source(state: State<'_, AppState>, source: String, year: Option<i32>) -> Result<usize, String> {
+    state
+        .db
+        .lock()
+        .unwrap()
+        .execute(
+            "DELETE FROM transactions WHERE source = ?1 AND (?2 IS NULL OR substr(date, 1, 4) = ?2)",
+            params![source, year.map(|y| y.to_string())],
+        )
+        .map_err(err)
 }
 
 fn hu_num(x: f64, decimals: usize) -> String {
@@ -315,13 +503,19 @@ fn export_csv(state: State<'_, AppState>, path: String) -> Result<(), String> {
     let mut w = || -> std::io::Result<()> {
         f.write_all(b"\xEF\xBB\xBF")?;
         writeln!(f, "Tranzakciók")?;
-        writeln!(f, "Dátum;Típus;Deviza;Összeg;Árfolyam;Árfolyam forrása;Árfolyam napja;Forint;Megjegyzés")?;
+        writeln!(f, "Dátum;Típus;Forrás;Deviza;Összeg;Árfolyam;Árfolyam forrása;Árfolyam napja;Forint;Megjegyzés")?;
         for t in txs.iter().rev() {
             writeln!(
                 f,
-                "{};{};{};{};{};{};{};{};{}",
+                "{};{};{};{};{};{};{};{};{};{}",
                 t.date,
-                if t.amount > 0.0 { "Befizetés" } else { "Kivétel" },
+                match t.kind.as_str() {
+                    "buy" => "Vétel",
+                    "sell" => "Eladás",
+                    _ if t.amount > 0.0 => "Befizetés",
+                    _ => "Kivétel",
+                },
+                t.source,
                 t.currency,
                 hu_num(t.amount, 2),
                 hu_num(t.rate, 4),
@@ -376,8 +570,50 @@ pub fn run() {
             summary,
             preview_tax,
             import_excel,
+            preview_import,
+            commit_import,
+            delete_by_source,
             export_csv
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn migrates_old_database_and_upserts_imports() {
+        let conn = Connection::open_in_memory().unwrap();
+        // A 0.1.0 előtti séma, néhány régi tétellel.
+        conn.execute_batch(
+            "CREATE TABLE transactions (id INTEGER PRIMARY KEY, date TEXT NOT NULL, currency TEXT NOT NULL,
+                amount REAL NOT NULL, rate REAL NOT NULL, rate_source TEXT NOT NULL, rate_date TEXT,
+                huf INTEGER NOT NULL, note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+             INSERT INTO transactions (date, currency, amount, rate, rate_source, huf, note)
+                VALUES ('2025-01-10', 'HUF', 131000, 1, '-', 131000, 'Excel import'),
+                       ('2026-06-03', 'EUR', -3000, 384.2, 'MNB', -1152600, '');",
+        )
+        .unwrap();
+        init_db(&conn).unwrap();
+        init_db(&conn).unwrap(); // másodszor is lefut hiba nélkül
+
+        let txs = all_transactions(&conn, None).unwrap();
+        assert_eq!((txs[0].source.as_str(), txs[0].kind.as_str()), ("kézi", "withdrawal"));
+        assert_eq!((txs[1].source.as_str(), txs[1].kind.as_str()), ("excel", "deposit"));
+
+        let insert = |amount: f64| {
+            conn.execute(
+                UPSERT_IMPORTED,
+                params!["2026-03-04", "EUR", amount, 390.0, "MNB", "2026-03-04", (amount * 390.0) as i64, "x", "binance", "buy", 0.4, "binance:2026-03-04:EUR:buy"],
+            )
+            .unwrap();
+        };
+        insert(400.4);
+        insert(500.0); // újraimportálás: frissít, nem duplikál
+        let imported: Vec<Tx> = all_transactions(&conn, Some(2026)).unwrap().into_iter().filter(|t| t.source == "binance").collect();
+        assert_eq!(imported.len(), 1);
+        assert_eq!(imported[0].amount, 500.0);
+    }
 }

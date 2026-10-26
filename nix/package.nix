@@ -14,7 +14,7 @@
 
 rustPlatform.buildRustPackage (finalAttrs: {
   pname = "kripto-ado";
-  version = "0.1.0";
+  version = "0.2.0";
 
   src = lib.fileset.toSource {
     root = ../.;
@@ -25,6 +25,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
       ../tsconfig.json
       ../tsconfig.node.json
       ../vite.config.ts
+      ../examples
       ../src
       ../src-tauri
     ];

@@ -1,7 +1,8 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ask, open, save } from "@tauri-apps/plugin-dialog";
-import { api, inDesktopApp, emptyYear, fmtAmount, fmtDate, fmtFt, fmtRate, fmtTax, MONTHS, today, Tx, YearSummary } from "./api";
+import { api, inDesktopApp, emptyYear, kindLabel, SOURCE_LABEL, fmtAmount, fmtDate, fmtFt, fmtRate, fmtTax, MONTHS, today, Tx, YearSummary } from "./api";
 import { Filing } from "./Filing";
+import { ImportDialog } from "./ImportDialog";
 import { GroupedColumns } from "./Chart";
 import { EntryForm } from "./EntryForm";
 import { IconAlert, IconChart, IconCheck, IconDoc, IconDownload, IconHome, IconList, IconLogo, IconTrash, IconUpload } from "./Icons";
@@ -18,6 +19,7 @@ function App() {
   const [editing, setEditing] = useState<Tx | null>(null);
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const notify = useCallback((text: string, error = false) => {
     setToast({ text, error });
@@ -70,6 +72,7 @@ function App() {
   }
 
   async function importExcel() {
+    setImportOpen(false);
     const path = await open({ multiple: false, filters: [{ name: "Excel", extensions: ["xlsx", "xlsm", "xls"] }] });
     if (!path) return;
     try {
@@ -131,8 +134,8 @@ function App() {
         </div>
 
         <div className="side-bottom">
-          <button onClick={importExcel}>
-            <IconUpload /> Excel import
+          <button onClick={() => setImportOpen(true)}>
+            <IconUpload /> Importálás
           </button>
           <button onClick={exportCsv}>
             <IconDownload /> Export CSV
@@ -157,14 +160,38 @@ function App() {
             years={years}
             txs={txs}
             empty={loaded && years.length === 0}
-            onImport={importExcel}
+            onImport={() => setImportOpen(true)}
             onSaved={onSaved}
             onError={(m) => notify(m, true)}
             onEdit={setEditing}
             onShowAll={() => setPage("transactions")}
           />
         )}
-        {page === "transactions" && <Transactions year={year} txs={txs} onEdit={setEditing} onDelete={remove} />}
+        {page === "transactions" && (
+          <Transactions
+            year={year}
+            txs={txs}
+            onEdit={setEditing}
+            onDelete={remove}
+            onDeleteSource={async (source) => {
+              const label = SOURCE_LABEL[source] ?? source;
+              const ok = await ask(`Az összes ${label} forrásból importált ${year}. évi tétel törlődik.`, {
+                title: `${label} tételek törlése?`,
+                kind: "warning",
+                okLabel: "Törlés",
+                cancelLabel: "Mégse",
+              });
+              if (!ok) return;
+              try {
+                const n = await api.deleteBySource(source, year);
+                notify(`${n} tétel törölve.`);
+                await reload();
+              } catch (err) {
+                notify(String(err), true);
+              }
+            }}
+          />
+        )}
         {page === "years" && <Years years={years} selected={year} onSelect={setYear} />}
         {page === "filing" && <Filing year={year} years={years} />}
       </main>
@@ -184,6 +211,18 @@ function App() {
             />
           </div>
         </div>
+      )}
+
+      {importOpen && (
+        <ImportDialog
+          onClose={() => setImportOpen(false)}
+          onExcel={importExcel}
+          onImported={async (msg) => {
+            setImportOpen(false);
+            notify(msg);
+            await reload();
+          }}
+        />
       )}
 
       {toast && <div className={`toast ${toast.error ? "error" : ""}`}>{toast.text}</div>}
@@ -246,12 +285,12 @@ function Overview(props: {
             <div>
               <h2>Üdv! Kezdjük az adatokkal.</h2>
               <p className="muted">
-                Rögzítsd jobb oldalt az első befizetést, vagy töltsd be a régi Excel táblázatodat – a forint
-                tételeket évenként beolvassuk.
+                Rögzítsd jobb oldalt az első befizetést, vagy importáld a tőzsdei exportodat (Binance, Revolut,
+                Kraken, Bybit), illetve a régi Excel táblázatodat.
               </p>
             </div>
             <button className="btn primary" onClick={props.onImport}>
-              <IconUpload /> Excel import
+              <IconUpload /> Importálás
             </button>
           </div>
         )}
@@ -318,7 +357,7 @@ function Overview(props: {
                 <li key={t.id} onClick={() => props.onEdit(t)} title="Kattints a módosításhoz">
                   <span className={`dot ${t.amount > 0 ? "in" : "out"}`} />
                   <span className="recent-main">
-                    <strong>{t.amount > 0 ? "Befizetés" : "Kivétel"}</strong>
+                    <strong>{kindLabel(t)}</strong>
                     <span className="muted">
                       {fmtDate(t.date)}
                       {t.note ? ` · ${t.note}` : ""}
@@ -360,12 +399,21 @@ function Stat(props: { label: string; value: string; hint?: string; swatch?: str
 
 /* ───────────── Tételek ───────────── */
 
-function Transactions(props: { year: number; txs: Tx[]; onEdit: (t: Tx) => void; onDelete: (t: Tx) => void }) {
+function Transactions(props: {
+  year: number;
+  txs: Tx[];
+  onEdit: (t: Tx) => void;
+  onDelete: (t: Tx) => void;
+  onDeleteSource: (source: string) => void;
+}) {
   const [filter, setFilter] = useState<"all" | "in" | "out">("all");
+  const [source, setSource] = useState("all");
   const [q, setQ] = useState("");
+  const sources = [...new Set(props.txs.map((t) => t.source))];
   const rows = props.txs.filter(
     (t) =>
       (filter === "all" || (filter === "in" ? t.amount > 0 : t.amount < 0)) &&
+      (source === "all" || t.source === source) &&
       (!q || t.note.toLowerCase().includes(q.toLowerCase()) || t.date.includes(q)),
   );
   const sumIn = rows.filter((t) => t.huf > 0).reduce((s, t) => s + t.huf, 0);
@@ -380,8 +428,8 @@ function Transactions(props: { year: number; txs: Tx[]; onEdit: (t: Tx) => void;
             {(
               [
                 ["all", "Mind"],
-                ["in", "Befizetés"],
-                ["out", "Kivétel"],
+                ["in", "Kiadás"],
+                ["out", "Bevétel"],
               ] as const
             ).map(([id, label]) => (
               <button key={id} className={filter === id ? "on" : ""} onClick={() => setFilter(id)}>
@@ -389,6 +437,21 @@ function Transactions(props: { year: number; txs: Tx[]; onEdit: (t: Tx) => void;
               </button>
             ))}
           </div>
+          {sources.length > 1 && (
+            <select value={source} onChange={(e) => setSource(e.target.value)} aria-label="Forrás">
+              <option value="all">Minden forrás</option>
+              {sources.map((s) => (
+                <option key={s} value={s}>
+                  {SOURCE_LABEL[s] ?? s}
+                </option>
+              ))}
+            </select>
+          )}
+          {source !== "all" && source !== "kézi" && (
+            <button className="btn danger-ghost" onClick={() => props.onDeleteSource(source)}>
+              <IconTrash /> {SOURCE_LABEL[source] ?? source} tételek törlése
+            </button>
+          )}
           <input className="search" placeholder="Keresés…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       </header>
@@ -403,6 +466,7 @@ function Transactions(props: { year: number; txs: Tx[]; onEdit: (t: Tx) => void;
                 <tr>
                   <th>Dátum</th>
                   <th>Típus</th>
+                  <th>Forrás</th>
                   <th className="num">Összeg</th>
                   <th className="num">Árfolyam</th>
                   <th className="num">Forint</th>
@@ -415,8 +479,9 @@ function Transactions(props: { year: number; txs: Tx[]; onEdit: (t: Tx) => void;
                   <tr key={t.id} className="clickable" onClick={() => props.onEdit(t)}>
                     <td>{fmtDate(t.date)}</td>
                     <td>
-                      <span className={`chip ${t.amount > 0 ? "in" : "out"}`}>{t.amount > 0 ? "Befizetés" : "Kivétel"}</span>
+                      <span className={`chip ${t.amount > 0 ? "in" : "out"}`}>{kindLabel(t)}</span>
                     </td>
+                    <td className="muted">{SOURCE_LABEL[t.source] ?? t.source}</td>
                     <td className="num">{fmtAmount(Math.abs(t.amount), t.currency)}</td>
                     <td
                       className="num muted"
@@ -445,13 +510,13 @@ function Transactions(props: { year: number; txs: Tx[]; onEdit: (t: Tx) => void;
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4} className="muted">
+                  <td colSpan={5} className="muted">
                     {rows.length} tétel
                   </td>
                   <td className="num" colSpan={3}>
-                    <span className="muted">be </span>
+                    <span className="muted">kiadás </span>
                     <strong>{fmtFt(sumIn)}</strong>
-                    <span className="muted"> · ki </span>
+                    <span className="muted"> · bevétel </span>
                     <strong>{fmtFt(sumOut)}</strong>
                   </td>
                 </tr>

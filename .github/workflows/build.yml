@@ -1,4 +1,4 @@
-name: Build (Windows + Linux)
+name: Build & Release (Windows + Linux)
 
 on:
   push:
@@ -16,14 +16,9 @@ jobs:
           - os: windows-latest
             bundles: nsis
             artifact: kripto-ado-windows
-            paths: |
-              src-tauri/target/release/bundle/nsis/*.exe
           - os: ubuntu-22.04
             bundles: deb,appimage
             artifact: kripto-ado-linux
-            paths: |
-              src-tauri/target/release/bundle/deb/*.deb
-              src-tauri/target/release/bundle/appimage/*.AppImage
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -54,10 +49,26 @@ jobs:
       - name: Tauri build
         run: npm run tauri build -- --bundles ${{ matrix.bundles }}
 
+      # Egységes, ékezet nélküli fájlnevek a release-hez.
+      - name: Kimenetek összegyűjtése
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          mkdir -p out
+          B=src-tauri/target/release/bundle
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp "$B"/nsis/*-setup.exe "out/kripto-ado_${VERSION}_windows_x64-setup.exe"
+            cp src-tauri/target/release/kripto-ado.exe "out/kripto-ado_${VERSION}_windows_x64-portable.exe"
+          else
+            cp "$B"/deb/*.deb "out/kripto-ado_${VERSION}_linux_amd64.deb"
+            cp "$B"/appimage/*.AppImage "out/kripto-ado_${VERSION}_linux_amd64.AppImage"
+          fi
+          ls -la out
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ matrix.paths }}
+          path: out/*
           if-no-files-found: error
 
   nix:
@@ -69,3 +80,55 @@ jobs:
         run: nix build .#default -L
       - name: Bináris ellenőrzése
         run: test -x result/bin/kripto-ado
+
+  release:
+    # Minden main-re pusholt változásból és minden v* tagből új release készül.
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Verzió és tag
+        id: v
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="$GITHUB_REF_NAME"
+            NAME="Kripto adó $GITHUB_REF_NAME"
+          else
+            TAG="v${VERSION}-build.${GITHUB_RUN_NUMBER}"
+            NAME="Kripto adó ${VERSION} (build ${GITHUB_RUN_NUMBER})"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Letöltés"
+            echo
+            echo "- **Windows:** \`*_windows_x64-setup.exe\` (telepítő) vagy \`*_windows_x64-portable.exe\` (telepítés nélkül)"
+            echo "- **Linux (Debian/Ubuntu):** \`*_linux_amd64.deb\` → \`sudo apt install ./kripto-ado_*.deb\`"
+            echo "- **Linux (bármely):** \`*_linux_amd64.AppImage\` → \`chmod +x\`, majd futtatás"
+            echo "- **NixOS:** \`nix run git+ssh://git@github.com/${GITHUB_REPOSITORY}\`"
+            echo
+            echo "## Változás"
+            echo
+            git log -1 --pretty=format:'%s%n%n%b' "$GITHUB_SHA" | grep -v '^Co-Authored-By:'
+          } > notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          name: ${{ steps.v.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          body_path: notes.md
+          make_latest: true
+          files: dist/*
+          fail_on_unmatched_files: true

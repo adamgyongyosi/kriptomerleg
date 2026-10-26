@@ -35,9 +35,10 @@ npm ci --no-audit --no-fund
 echo "==> tauri build (deb, appimage)"
 npm run tauri build -- --bundles deb,appimage
 
+VERSION="$(node -p "require('./package.json').version")"
 mkdir -p "$OUT"
 rm -f "$OUT"/*.deb "$OUT"/*.AppImage
-cp src-tauri/target/release/bundle/deb/*.deb "$OUT"/
-cp src-tauri/target/release/bundle/appimage/*.AppImage "$OUT"/
+cp "$(ls -t src-tauri/target/release/bundle/deb/*.deb | head -1)" "$OUT/kripto-ado_${VERSION}_linux_amd64.deb"
+cp "$(ls -t src-tauri/target/release/bundle/appimage/*.AppImage | head -1)" "$OUT/kripto-ado_${VERSION}_linux_amd64.AppImage"
 echo "==> Kész:"
 ls -la "$OUT"
