@@ -1,0 +1,120 @@
+import { invoke as tauriInvoke, InvokeArgs } from "@tauri-apps/api/core";
+
+/** Böngészőben (nem az asztali appban) nincs Tauri háttér. */
+export const inDesktopApp = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+function invoke<T>(cmd: string, args?: InvokeArgs): Promise<T> {
+  if (!inDesktopApp()) {
+    return Promise.reject(
+      new Error("Ez a felület csak az asztali alkalmazásban működik. Indítsd a Kripto adó programot (kripto-ado.exe)."),
+    );
+  }
+  return tauriInvoke<T>(cmd, args);
+}
+
+export type Currency = "EUR" | "HUF";
+
+export interface Tx {
+  id: number;
+  date: string;
+  currency: Currency;
+  /** Pozitív: befizetés, negatív: kivétel. */
+  amount: number;
+  rate: number;
+  rateSource: "MNB" | "kézi" | "-";
+  rateDate: string | null;
+  huf: number;
+  note: string;
+}
+
+export interface TxInput {
+  date: string;
+  currency: Currency;
+  amount: number;
+  /** null: MNB árfolyam a dátum napján. */
+  rate: number | null;
+  note: string;
+}
+
+export interface RateInfo {
+  rate: number;
+  rateDate: string;
+}
+
+export interface YearSummary {
+  year: number;
+  depositsHuf: number;
+  withdrawalsHuf: number;
+  resultHuf: number;
+  /** A nyereség 15%-a. */
+  taxGross: number;
+  /** Adókiegyenlítési keret (tárgyévi + előző 2 év adója − már érvényesített). */
+  offsetCap: number;
+  /** Figyelembe vehető, még fel nem használt veszteségek 15%-a. */
+  lossPool: number;
+  offsetUsed: number;
+  /** Negatív: visszajár. */
+  taxDue: number;
+  lossCredit: number;
+  lossCreditRemaining: number;
+  taxFreeHeadroom: number;
+}
+
+export const api = {
+  listTransactions: (year: number | null) => invoke<Tx[]>("list_transactions", { year }),
+  addTransaction: (input: TxInput) => invoke<Tx>("add_transaction", { input }),
+  updateTransaction: (id: number, input: TxInput) => invoke<Tx>("update_transaction", { id, input }),
+  deleteTransaction: (id: number) => invoke<void>("delete_transaction", { id }),
+  getMnbRate: (date: string, currency: Currency = "EUR") => invoke<RateInfo>("get_mnb_rate", { date, currency }),
+  summary: () => invoke<YearSummary[]>("summary"),
+  previewTax: (tx: { year: number; huf: number; excludeId: number | null }) =>
+    invoke<YearSummary | null>("preview_tax", { tx }),
+  importExcel: (path: string) => invoke<{ imported: number; skipped: number }>("import_excel", { path }),
+  exportCsv: (path: string) => invoke<void>("export_csv", { path }),
+};
+
+const huf = new Intl.NumberFormat("hu-HU", { maximumFractionDigits: 0 });
+const dec = new Intl.NumberFormat("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export const fmtFt = (n: number) => `${huf.format(n)} Ft`;
+/** Fizetendő adó; negatív esetén "… visszajár". */
+export const fmtTax = (n: number) => (n < 0 ? `${fmtFt(-n)} visszajár` : fmtFt(n));
+export const fmtRate = (n: number) => dec.format(n);
+export const fmtAmount = (n: number, currency: Currency) =>
+  currency === "HUF" ? fmtFt(n) : `${dec.format(n)} ${currency}`;
+
+/** "1 000,50", "-250", "1.000,5" → szám. */
+export function parseAmount(s: string): number | null {
+  const t = s.replace(/[\s ]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
+  if (!/^[+-]?\d+(\.\d+)?$/.test(t)) return null;
+  return Number(t);
+}
+
+export const emptyYear = (year: number): YearSummary => ({
+  year,
+  depositsHuf: 0,
+  withdrawalsHuf: 0,
+  resultHuf: 0,
+  taxGross: 0,
+  offsetCap: 0,
+  lossPool: 0,
+  offsetUsed: 0,
+  taxDue: 0,
+  lossCredit: 0,
+  lossCreditRemaining: 0,
+  taxFreeHeadroom: 0,
+});
+
+export const MONTHS = ["jan", "febr", "márc", "ápr", "máj", "jún", "júl", "aug", "szept", "okt", "nov", "dec"];
+
+/** "2026-10-26" → "2026. okt. 26." */
+export function fmtDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${y}. ${MONTHS[m - 1]}. ${d}.`;
+}
+
+export function today(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
