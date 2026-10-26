@@ -45,10 +45,27 @@ export const IconArrow = () => (
     <path d="M5 12h14M13 6l6 6-6 6" />
   </svg>
 );
-export const IconLogo = () => (
-  <svg width={28} height={28} viewBox="0 0 28 28" aria-hidden>
-    <rect width="28" height="28" rx="8" fill="var(--accent)" />
-    <path d="M8 19V13M12.5 19V9M17 19v-4" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" />
+export const IconLogo = ({ size = 30 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 512 512" aria-hidden>
+    <defs>
+      <linearGradient id="km-bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stopColor="#14b8a6" />
+        <stop offset="1" stopColor="#0f5f58" />
+      </linearGradient>
+    </defs>
+    <rect width="512" height="512" rx="116" fill="url(#km-bg)" />
+    <g fill="none" stroke="#fff" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M256 168v206" strokeWidth="30" />
+      <path d="M186 390h140" strokeWidth="30" />
+      <path d="M118 196h276" strokeWidth="28" />
+      <path d="M148 204l-46 96M148 204l46 96M364 204l-46 96M364 204l46 96" strokeWidth="14" />
+      <path d="M90 300a58 40 0 0 0 116 0z" fill="#fff" strokeWidth="12" />
+      <path d="M306 300a58 40 0 0 0 116 0z" fill="#fff" strokeWidth="12" />
+    </g>
+    <path d="M226 132v-14a30 30 0 0 1 60 0v14" fill="none" stroke="#fff" strokeWidth="16" strokeLinecap="round" />
+    <rect x="210" y="128" width="92" height="66" rx="16" fill="#fff" />
+    <circle cx="256" cy="155" r="10" fill="#0f5f58" />
+    <path d="M251 160h10l3 18h-16z" fill="#0f5f58" />
   </svg>
 );
 export const IconDoc = () => (

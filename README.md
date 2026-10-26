@@ -1,6 +1,10 @@
-# Kripto adó
+<p align="center"><img src="brand/logo-mark.svg" width="96" alt="Kriptomérleg logó"></p>
 
-Asztali alkalmazás (Windows, Linux) a kriptóba befizetett és onnan kivett összegek nyilvántartására és a magyar kriptó-SZJA kiszámítására.
+# Kriptomérleg
+
+**A kriptóadód, a saját gépeden.** Asztali alkalmazás (Windows, Linux, NixOS) a kriptóba befizetett és onnan kivett összegek nyilvántartására és a magyar kriptó-SZJA kiszámítására – fiók és felhő nélkül, minden adat helyben marad.
+
+Weboldal: <https://adamgyongyosi.github.io/kripto-ado/> (a `site/` mappából, lásd [Weboldal](#weboldal)).
 
 - Gyors rögzítés: Befizetés / Kivétel kapcsoló, € / Ft váltó (alapértelmezés: EUR, minden mentés után visszaáll), és élőben látszik, mennyivel változik az évi adó. Mínusz jellel beírt összeg automatikusan kivétel.
 - EUR tételeknél az MNB hivatalos árfolyamát automatikusan lekéri a teljesítés napjára (hétvégén/ünnepnap az utolsó közzétettet); kattintásra kézi (pl. banki) árfolyam is megadható. Forintos tétel is rögzíthető.
@@ -19,10 +23,12 @@ Minden `main`-re pusholt változásból automatikusan új **[Release](https://gi
 
 | Fájl | Rendszer |
 |---|---|
-| `kripto-ado_<verzió>_windows_x64-setup.exe` | Windows telepítő |
-| `kripto-ado_<verzió>_windows_x64-portable.exe` | Windows, telepítés nélkül |
-| `kripto-ado_<verzió>_linux_amd64.deb` | Debian / Ubuntu: `sudo apt install ./kripto-ado_*.deb` |
-| `kripto-ado_<verzió>_linux_amd64.AppImage` | bármely Linux: `chmod +x`, majd futtatás |
+| `kriptomerleg_windows_x64-setup.exe` | Windows telepítő |
+| `kriptomerleg_windows_x64-portable.exe` | Windows, telepítés nélkül |
+| `kriptomerleg_linux_amd64.deb` | Debian / Ubuntu: `sudo apt install ./kriptomerleg_linux_amd64.deb` |
+| `kriptomerleg_linux_amd64.AppImage` | bármely Linux: `chmod +x`, majd futtatás |
+
+A fájlnevekben nincs verziószám, így a `https://github.com/adamgyongyosi/kripto-ado/releases/latest/download/<fájlnév>` link mindig a legfrissebbre mutat (a weboldal letöltőgombjai is ezt használják). A verzió a release nevében és tagjében szerepel.
 
 NixOS-re lásd lent.
 
@@ -54,7 +60,7 @@ A formátumot az oszlopnevek alapján ismeri fel. A menük neve a tőzsdei appok
 
 ## Adatok tárolása
 
-Minden adat helyben, egyetlen SQLite adatbázisfájlban van (`kripto-ado.sqlite`), az app nem küld adatot sehova. Az egyetlen hálózati forgalom az MNB árfolyam lekérése.
+Minden adat helyben, egyetlen SQLite adatbázisfájlban van (`kripto-ado.sqlite`), az app nem küld adatot sehova. (Az adatmappa neve a Kriptomérleg átnevezés után is `hu.kriptoado.app` maradt, hogy a korábban rögzített adatok megmaradjanak.) Az egyetlen hálózati forgalom az MNB árfolyam lekérése.
 
 | Rendszer | Hely |
 |---|---|
@@ -112,7 +118,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - GitHub Actions (`.github/workflows/build.yml`): minden pushnál Windows (NSIS + hordozható exe) és Linux (.deb, AppImage) build és Rust tesztek, `nix build` ellenőrzés, majd `main`-re pusholáskor automatikus GitHub Release a fájlokkal.
 - Verzió emelése: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json` és `nix/package.nix` `version` mezője; kiadás taggel: `git tag v0.2.0 && git push --tags`.
 
-A kimenetek a `telepito/windows` és `telepito/linux` mappába kerülnek.
+A kimenetek a `telepito/windows` és `telepito/linux` mappába kerülnek (`kriptomerleg_<verzió>_…` néven).
 
 Linux függőségek (Debian/Ubuntu):
 
@@ -127,7 +133,8 @@ A repóban van egy Nix flake (`flake.nix`, `nix/package.nix`), ebből a NixOS na
 Futtatás telepítés nélkül (a repó privát, ezért SSH-n keresztül):
 
 ```bash
-nix run git+ssh://git@github.com/adamgyongyosi/kripto-ado
+nix run git+ssh://git@github.com/adamgyongyosi/kripto-ado   # privát repóból
+nix run github:adamgyongyosi/kripto-ado                   # ha a repó publikus
 ```
 
 Rendszerszintű telepítés flake-alapú NixOS konfigurációban:
@@ -144,6 +151,17 @@ Fejlesztői környezet: `nix develop`, utána `npm install && npm run tauri dev`
 
 Alternatíva: az AppImage NixOS-en `appimage-run`-nal indítható (`programs.appimage.enable = true;`).
 
+## Weboldal
+
+A landing oldal a `site/` mappában van: egyetlen statikus `index.html` (külső függőség nélkül), a logó és az ikon. Sötét/világos módot és mobilnézetet is kezel, a letöltőgombok a legfrissebb release fájljaira mutatnak, és kiemeli a látogató rendszeréhez illőt.
+
+- Helyi előnézet: `npx vite` (vagy `npm run dev`), majd <http://localhost:1420/site/index.html>
+- Közzététel: a `.github/workflows/pages.yml` minden `site/` változásnál feltölti a GitHub Pages-re.
+- **Egyszeri beállítás:** Settings → Pages → Source: *GitHub Actions*. Ingyenes GitHub-fiókkal a Pages (és a mindenki által letölthető release) csak **publikus** repóból működik.
+- A repó neve egy helyen szerepel a lap alján lévő szkriptben (`REPO`), átnevezésnél csak ezt kell módosítani.
+
+Arculat (logó, színek, hangnem): [`brand/README.md`](brand/README.md).
+
 ## Felépítés
 
 - `src-tauri/src/tax.rs` – adószámítás és adókiegyenlítés (unit tesztekkel)
@@ -151,4 +169,6 @@ Alternatíva: az AppImage NixOS-en `appimage-run`-nal indítható (`programs.app
 - `src-tauri/src/excel.rs` – régi Excel import
 - `src-tauri/src/import/` – tőzsdei import: közös CSV/Excel olvasó, szám- és dátumértelmezés (`mod.rs`), formátumonként `binance.rs`, `revolut.rs`, `kraken.rs`, `bybit.rs` (mintafájlos tesztekkel)
 - `src-tauri/src/lib.rs` – SQLite tárolás, Tauri parancsok, CSV export
+- `brand/` – logó és arculati leírás
+- `site/` – landing oldal (GitHub Pages)
 - `src/` – React felület (`App.tsx`, `EntryForm.tsx`, `ImportDialog.tsx`, `Filing.tsx`, `Chart.tsx`)

@@ -20,7 +20,7 @@ function Copy-WithRetry([string]$From, [string]$To) {
             Copy-Item $From $To -Force
             return
         } catch {
-            if ($i -eq 10) { throw "Nem sikerült másolni ($To): $_. Fut még a Kripto adó? Zárd be, és próbáld újra." }
+            if ($i -eq 10) { throw "Nem sikerült másolni ($To): $_. Fut még a Kriptomérleg? Zárd be, és próbáld újra." }
             Start-Sleep -Seconds 2
         }
     }
@@ -33,8 +33,8 @@ $win = Join-Path $root "telepito\windows"
 New-Item -ItemType Directory -Force $win | Out-Null
 Get-ChildItem $win -File | Remove-Item -Force -ErrorAction SilentlyContinue
 $setup = Get-ChildItem "$env:CARGO_TARGET_DIR\release\bundle\nsis\*setup.exe" | Sort-Object LastWriteTime | Select-Object -Last 1
-Copy-WithRetry $setup.FullName (Join-Path $win "kripto-ado_${version}_windows_x64-setup.exe")
-Copy-WithRetry "$env:CARGO_TARGET_DIR\release\kripto-ado.exe" (Join-Path $win "kripto-ado_${version}_windows_x64-portable.exe")
+Copy-WithRetry $setup.FullName (Join-Path $win "kriptomerleg_${version}_windows_x64-setup.exe")
+Copy-WithRetry "$env:CARGO_TARGET_DIR\release\kriptomerleg.exe" (Join-Path $win "kriptomerleg_${version}_windows_x64-portable.exe")
 
 Write-Host "==> Linux build ($Distro WSL)" -ForegroundColor Cyan
 $wslRoot = (wsl -d $Distro -- wslpath -a ($root -replace '\\', '/')).Trim()

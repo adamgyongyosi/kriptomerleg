@@ -13,7 +13,7 @@
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
-  pname = "kripto-ado";
+  pname = "kriptomerleg";
   version = "0.2.0";
 
   src = lib.fileset.toSource {
@@ -54,9 +54,9 @@ rustPlatform.buildRustPackage (finalAttrs: {
   ];
 
   meta = {
-    description = "Kripto befizetések nyilvántartása és SZJA számítás MNB árfolyamon";
+    description = "Kriptomérleg – magyar kriptó-SZJA kalkulátor, helyben futó asztali app";
     homepage = "https://github.com/adamgyongyosi/kripto-ado";
-    mainProgram = "kripto-ado";
+    mainProgram = "kriptomerleg";
     platforms = lib.platforms.linux;
   };
 })

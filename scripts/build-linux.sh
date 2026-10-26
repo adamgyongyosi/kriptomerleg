@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SRC="$(cd "${1:-$(dirname "$0")/..}" && pwd)"
-WORK="${KRIPTO_WORK:-$HOME/build/kripto-ado}"
+WORK="${KRIPTO_WORK:-$HOME/build/kriptomerleg}"
 OUT="$SRC/telepito/linux"
 
 export PATH="$HOME/.local/node/bin:$HOME/.cargo/bin:$PATH"
@@ -38,7 +38,7 @@ npm run tauri build -- --bundles deb,appimage
 VERSION="$(node -p "require('./package.json').version")"
 mkdir -p "$OUT"
 rm -f "$OUT"/*.deb "$OUT"/*.AppImage
-cp "$(ls -t src-tauri/target/release/bundle/deb/*.deb | head -1)" "$OUT/kripto-ado_${VERSION}_linux_amd64.deb"
-cp "$(ls -t src-tauri/target/release/bundle/appimage/*.AppImage | head -1)" "$OUT/kripto-ado_${VERSION}_linux_amd64.AppImage"
+cp "$(ls -t src-tauri/target/release/bundle/deb/*.deb | head -1)" "$OUT/kriptomerleg_${VERSION}_linux_amd64.deb"
+cp "$(ls -t src-tauri/target/release/bundle/appimage/*.AppImage | head -1)" "$OUT/kriptomerleg_${VERSION}_linux_amd64.AppImage"
 echo "==> Kész:"
 ls -la "$OUT"

@@ -6,7 +6,7 @@ export const inDesktopApp = () => typeof window !== "undefined" && "__TAURI_INTE
 function invoke<T>(cmd: string, args?: InvokeArgs): Promise<T> {
   if (!inDesktopApp()) {
     return Promise.reject(
-      new Error("Ez a felület csak az asztali alkalmazásban működik. Indítsd a Kripto adó programot (kripto-ado.exe)."),
+      new Error("Ez a felület csak az asztali alkalmazásban működik. Indítsd a Kriptomérleg programot (kriptomerleg.exe)."),
     );
   }
   return tauriInvoke<T>(cmd, args);

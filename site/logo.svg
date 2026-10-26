@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kriptomérleg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#0f5f58"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+    <!-- oszlop és talp -->
+    <path d="M256 168v206" stroke-width="30"/>
+    <path d="M186 390h140" stroke-width="30"/>
+    <!-- gerenda -->
+    <path d="M118 196h276" stroke-width="28"/>
+    <!-- zsinórok -->
+    <path d="M148 204l-46 96M148 204l46 96M364 204l-46 96M364 204l46 96" stroke-width="14"/>
+    <!-- serpenyők -->
+    <path d="M90 300a58 40 0 0 0 116 0z" fill="#fff" stroke-width="12"/>
+    <path d="M306 300a58 40 0 0 0 116 0z" fill="#fff" stroke-width="12"/>
+  </g>
+  <!-- lakat-fej a mérleg tetején: helyben, zárva maradnak az adatok -->
+  <path d="M226 132v-14a30 30 0 0 1 60 0v14" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round"/>
+  <rect x="210" y="128" width="92" height="66" rx="16" fill="#fff"/>
+  <circle cx="256" cy="155" r="10" fill="#0f5f58"/>
+  <path d="M251 160h10l3 18h-16z" fill="#0f5f58"/>
+</svg>

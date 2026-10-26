@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Kripto adó",
+  "productName": "Kriptomérleg",
   "version": "0.2.0",
   "identifier": "hu.kriptoado.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Kripto adó – befizetések és SZJA",
+        "title": "Kriptomérleg",
         "width": 1180,
         "height": 860,
         "minWidth": 860,
@@ -37,7 +37,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "shortDescription": "Kripto befizetések és SZJA számítás MNB árfolyamon",
-    "category": "Finance"
+    "shortDescription": "Magyar kriptó-SZJA kalkulátor, helyben futó asztali app",
+    "category": "Finance",
+    "longDescription": "Kriptó befizetések és kivételek nyilvántartása, MNB árfolyamon számolt 15% SZJA, tőzsdei import és NAV-bevallási segéd. Minden adat a saját gépeden marad.",
+    "publisher": "Kriptomérleg",
+    "homepage": "https://adamgyongyosi.github.io/kripto-ado/"
   }
 }

@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kriptomérleg – a kriptóadód, a saját gépeden</title>
+  <meta name="description" content="Magyar kriptó-SZJA kalkulátor asztali appként: MNB árfolyam, tőzsdei import (Binance, Revolut, Kraken, Bybit), NAV-bevallási segéd. Fiók és felhő nélkül, minden adat nálad marad." />
+  <meta property="og:title" content="Kriptomérleg – a kriptóadód, a saját gépeden" />
+  <meta property="og:description" content="Magyar kriptó-SZJA kalkulátor. Helyben fut, fiók és felhő nélkül." />
+  <meta property="og:image" content="icon-256.png" />
+  <meta name="theme-color" content="#0f766e" />
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
+  <link rel="apple-touch-icon" href="icon-256.png" />
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f4;
+      --surface: #ffffff;
+      --surface-2: #eef1ec;
+      --ink: #0c1a1a;
+      --ink-2: #44534f;
+      --muted: #6f7c78;
+      --line: rgba(12, 26, 26, 0.1);
+      --brand: #0f766e;
+      --brand-2: #14b8a6;
+      --brand-ink: #ffffff;
+      --brand-soft: rgba(20, 184, 166, 0.12);
+      --warn: #8a5300;
+      --bad: #b42d2d;
+      --good: #0c7a3a;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 12px 32px rgba(12, 40, 36, 0.08);
+      --radius: 16px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --bg: #0b1211;
+        --surface: #121c1b;
+        --surface-2: #192624;
+        --ink: #eef3f1;
+        --ink-2: #b9c6c2;
+        --muted: #8a9894;
+        --line: rgba(255, 255, 255, 0.09);
+        --brand: #14b8a6;
+        --brand-2: #2dd4bf;
+        --brand-ink: #042f2c;
+        --brand-soft: rgba(45, 212, 191, 0.12);
+        --warn: #f0b440;
+        --bad: #f07a7a;
+        --good: #4cc94c;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.35);
+      }
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0b1211; --surface: #121c1b; --surface-2: #192624; --ink: #eef3f1; --ink-2: #b9c6c2; --muted: #8a9894;
+      --line: rgba(255, 255, 255, 0.09); --brand: #14b8a6; --brand-2: #2dd4bf; --brand-ink: #042f2c;
+      --brand-soft: rgba(45, 212, 191, 0.12); --warn: #f0b440; --bad: #f07a7a; --good: #4cc94c;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); }
+    a { color: var(--brand); }
+    h1, h2, h3, p { margin: 0; }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+    section { padding: 72px 0; }
+    .eyebrow { font-size: 13px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); }
+    h2 { font-size: clamp(26px, 3.4vw, 36px); letter-spacing: -0.02em; line-height: 1.15; margin-top: 8px; }
+    .lead { color: var(--ink-2); font-size: 17px; max-width: 640px; margin-top: 12px; }
+    .muted { color: var(--muted); }
+
+    /* Fejléc */
+    header.top { position: sticky; top: 0; z-index: 10; backdrop-filter: saturate(1.4) blur(10px); background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--line); }
+    header.top .wrap { display: flex; align-items: center; gap: 20px; height: 64px; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+    .brand img { width: 32px; height: 32px; }
+    nav.links { display: flex; gap: 22px; margin-left: auto; }
+    nav.links a { color: var(--ink-2); text-decoration: none; font-size: 15px; }
+    nav.links a:hover { color: var(--ink); }
+    @media (max-width: 720px) { nav.links { display: none; } header.top .btn { margin-left: auto; } }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 12px; font-weight: 650; font-size: 15px; text-decoration: none; border: 1px solid transparent; cursor: pointer; transition: transform 0.06s, filter 0.15s, background 0.15s; white-space: nowrap; }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { background: var(--brand); color: var(--brand-ink); }
+    .btn.primary:hover { filter: brightness(1.08); }
+    .btn.ghost { background: var(--surface); color: var(--ink); border-color: var(--line); }
+    .btn.ghost:hover { background: var(--surface-2); }
+    .btn.small { padding: 8px 14px; font-size: 14px; }
+    .btn svg { width: 18px; height: 18px; }
+
+    /* Hero */
+    .hero { padding: 64px 0 56px; }
+    .hero .wrap { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; }
+    @media (max-width: 920px) { .hero .wrap { grid-template-columns: 1fr; } }
+    .hero h1 { font-size: clamp(36px, 5.4vw, 58px); line-height: 1.04; letter-spacing: -0.035em; }
+    .hero h1 em { font-style: normal; color: var(--brand); }
+    .hero p.lead { font-size: 18px; margin-top: 18px; }
+    .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+    .cta-note { margin-top: 14px; font-size: 14px; color: var(--muted); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+    .chip { font-size: 13px; padding: 5px 11px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
+
+    /* App-illusztráció */
+    .mock { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+    .mock-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); font-size: 13px; color: var(--muted); }
+    .mock-bar img { width: 18px; height: 18px; }
+    .mock-body { padding: 18px; display: grid; gap: 12px; }
+    .m-hero { display: grid; grid-template-columns: 1.3fr 1fr; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .m-hero > div { padding: 14px 16px; }
+    .m-hero > div:first-child { background: color-mix(in srgb, var(--good) 9%, transparent); }
+    .m-hero > div + div { border-left: 1px solid var(--line); }
+    .m-label { font-size: 12px; color: var(--ink-2); }
+    .m-big { font-size: 30px; font-weight: 700; letter-spacing: -0.03em; }
+    .m-mid { font-size: 19px; font-weight: 650; }
+    .m-ok { font-size: 12px; color: var(--good); }
+    .m-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .m-stat { border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; }
+    .m-stat b { display: block; font-size: 15px; }
+    .m-entry { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 10px; }
+    .m-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--surface-2); padding: 3px; border-radius: 10px; font-size: 13px; font-weight: 650; text-align: center; }
+    .m-toggle span { padding: 6px; border-radius: 8px; color: var(--muted); }
+    .m-toggle span.on { background: var(--surface); color: #d9561f; box-shadow: 0 0 0 1px var(--line); }
+    .m-amount { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--brand); border-radius: 12px; padding: 6px 8px 6px 14px; font-size: 24px; font-weight: 650; }
+    .m-ccy { display: flex; gap: 2px; background: var(--surface-2); border-radius: 9px; padding: 3px; font-size: 14px; }
+    .m-ccy span { padding: 3px 10px; border-radius: 7px; color: var(--muted); }
+    .m-ccy span.on { background: var(--surface); color: var(--brand); box-shadow: 0 0 0 1px var(--line); }
+    .m-result { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+    .m-result div { display: flex; justify-content: space-between; gap: 8px; }
+    .m-result b { color: var(--ink); }
+    .m-up { color: var(--bad); font-weight: 650; }
+    @media (max-width: 480px) { .m-grid { grid-template-columns: 1fr 1fr; } .m-hero { grid-template-columns: 1fr; } .m-hero > div + div { border-left: none; border-top: 1px solid var(--line); } }
+
+    /* Adatvédelmi sáv */
+    .privacy { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 40px 0; }
+    .privacy .wrap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+    @media (max-width: 760px) { .privacy .wrap { grid-template-columns: 1fr; } }
+    .p-item { display: flex; gap: 14px; align-items: flex-start; }
+    .p-icon { flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+    .p-icon svg { width: 22px; height: 22px; }
+    .p-item h3 { font-size: 16px; }
+    .p-item p { color: var(--ink-2); font-size: 14.5px; margin-top: 2px; }
+
+    /* Funkciók */
+    .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 36px; }
+    @media (max-width: 920px) { .grid3 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .grid3 { grid-template-columns: 1fr; } }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+    .card h3 { font-size: 17px; margin-top: 12px; }
+    .card p { color: var(--ink-2); font-size: 15px; margin-top: 6px; }
+    .card .p-icon { width: 38px; height: 38px; }
+
+    /* Lépések */
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 36px; counter-reset: step; }
+    @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+    .step { position: relative; padding: 22px 22px 22px 70px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+    .step::before { counter-increment: step; content: counter(step); position: absolute; left: 22px; top: 22px; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--brand); color: var(--brand-ink); font-weight: 700; }
+    .step h3 { font-size: 17px; }
+    .step p { color: var(--ink-2); font-size: 15px; margin-top: 4px; }
+
+    /* Összehasonlítás */
+    .compare { margin-top: 32px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+    .compare table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .compare th, .compare td { padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .compare tr:last-child td { border-bottom: none; }
+    .compare th { font-size: 13px; color: var(--muted); font-weight: 600; background: var(--surface-2); }
+    .compare th.us { color: var(--brand); }
+    .compare td:first-child { color: var(--ink-2); width: 34%; }
+    .compare td.us { font-weight: 600; }
+    .yes { color: var(--good); }
+    .table-scroll { overflow-x: auto; }
+    @media (max-width: 600px) {
+      .compare table { font-size: 13.5px; }
+      .compare th, .compare td { padding: 11px 12px; }
+      .compare td:first-child { width: auto; }
+    }
+
+    /* Letöltés */
+    .downloads { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 36px; }
+    @media (max-width: 860px) { .downloads { grid-template-columns: 1fr; } }
+    .dl { display: flex; flex-direction: column; gap: 12px; }
+    .dl.recommended { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+    .dl .tag { align-self: flex-start; font-size: 12px; font-weight: 650; color: var(--brand); background: var(--brand-soft); padding: 3px 9px; border-radius: 999px; }
+    .dl h3 { font-size: 19px; margin: 0; }
+    .dl .btns { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+    code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; }
+    pre { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; overflow-x: auto; margin: 0; white-space: pre-wrap; word-break: break-all; }
+
+    /* GYIK */
+    .faq { margin-top: 28px; display: grid; gap: 10px; max-width: 820px; }
+    details { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; }
+    summary { cursor: pointer; font-weight: 650; font-size: 16px; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--brand); font-size: 22px; line-height: 1; }
+    details[open] summary::after { content: "–"; }
+    details p { color: var(--ink-2); margin-top: 10px; font-size: 15px; }
+
+    footer { border-top: 1px solid var(--line); padding: 36px 0 48px; color: var(--muted); font-size: 14px; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 16px 32px; justify-content: space-between; }
+    footer .disclaimer { max-width: 620px; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="#"><img src="logo.svg" alt="" />Kriptomérleg</a>
+      <nav class="links">
+        <a href="#funkciok">Funkciók</a>
+        <a href="#hogyan">Hogyan működik</a>
+        <a href="#osszevetes">Miért helyi?</a>
+        <a href="#gyik">GYIK</a>
+      </nav>
+      <a class="btn primary small" href="#letoltes">Letöltés</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <div>
+          <span class="eyebrow">Magyar kriptó-SZJA kalkulátor</span>
+          <h1 style="margin-top:12px">A kriptóadód,<br /><em>a saját gépeden.</em></h1>
+          <p class="lead">
+            A Kriptomérleg MNB árfolyamon kiszámolja a 15%-os kriptóadót, beolvassa a tőzsdei exportjaidat, és megmutatja,
+            mit hova írj a NAV-bevallásban. Nincs regisztráció és nincs felhő: minden adat nálad marad.
+          </p>
+          <div class="cta">
+            <a class="btn primary" id="cta-primary" href="#letoltes">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg>
+              <span id="cta-label">Ingyenes letöltés</span>
+            </a>
+            <a class="btn ghost" href="#hogyan">Hogyan működik?</a>
+          </div>
+          <p class="cta-note" id="cta-note">Windows · Linux · NixOS — ingyenes béta</p>
+          <div class="chips" aria-label="Támogatott források">
+            <span class="chip">Binance</span><span class="chip">Revolut</span><span class="chip">Kraken</span><span class="chip">Bybit</span><span class="chip">saját Excel</span><span class="chip">kézi rögzítés</span>
+          </div>
+        </div>
+
+        <div class="mock" aria-label="Az alkalmazás illusztrációja">
+          <div class="mock-bar"><img src="logo.svg" alt="" />Kriptomérleg — 2026. év</div>
+          <div class="mock-body">
+            <div class="m-hero">
+              <div>
+                <div class="m-label">Fizetendő adó · 2026</div>
+                <div class="m-big">0 Ft</div>
+                <div class="m-ok">✓ A nyereséget a korábbi veszteség fedezi.</div>
+              </div>
+              <div>
+                <div class="m-label">Adómentesen még kivehető</div>
+                <div class="m-mid">1 274 345 Ft</div>
+              </div>
+            </div>
+            <div class="m-grid">
+              <div class="m-stat"><span class="m-label">Befizetve</span><b>1 401 370 Ft</b></div>
+              <div class="m-stat"><span class="m-label">Kivéve</span><b>1 703 025 Ft</b></div>
+              <div class="m-stat"><span class="m-label">Nyereség</span><b>301 655 Ft</b></div>
+            </div>
+            <div class="m-entry">
+              <div class="m-toggle"><span>Befizetés</span><span class="on">Kivétel</span></div>
+              <div class="m-amount">1 500 <span class="m-ccy"><span class="on">€</span><span>Ft</span></span></div>
+              <div class="m-result">
+                <div><span>MNB árfolyam, 2026. okt. 26.</span><b>366,95 Ft</b></div>
+                <div><span>Forintban</span><b>550 425 Ft</b></div>
+                <div><span>Fizetendő adó 2026</span><span>0 Ft → <b>0 Ft</b></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="privacy">
+      <div class="wrap">
+        <div class="p-item">
+          <div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+          <div><h3>Nincs regisztráció</h3><p>Nem kér e-mail címet, jelszót vagy tőzsdei API-kulcsot. Letöltöd, és már használhatod is.</p></div>
+        </div>
+        <div class="p-item">
+          <div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div>
+          <div><h3>Minden a gépeden</h3><p>A tranzakcióid egyetlen helyi fájlban vannak. Nincs szerver, ahol kiszivároghatnának.</p></div>
+        </div>
+        <div class="p-item">
+          <div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
+          <div><h3>Csak az MNB-vel beszél</h3><p>Az egyetlen hálózati forgalom a hivatalos árfolyam lekérése. Árfolyamot kézzel is megadhatsz.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <section id="funkciok">
+      <div class="wrap">
+        <span class="eyebrow">Funkciók</span>
+        <h2>Minden, ami a magyar kriptóbevalláshoz kell</h2>
+        <p class="lead">Kifejezetten a magyar szabályokra készült, nem egy átírt külföldi riport.</p>
+        <div class="grid3">
+          <div class="card"><div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><h3>MNB árfolyam automatikusan</h3><p>Az EUR- (vagy USD-) összeget a teljesítés napjának hivatalos árfolyamán számolja át. Hétvégén és ünnepnap az utolsó közzétett árfolyamot használja.</p></div>
+          <div class="card"><div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></div><h3>Tőzsdei import</h3><p>Beolvassa a Binance, Revolut, Kraken és Bybit exportját. Csak a fiat ↔ kripto ügyleteket veszi át, a díjakkal együtt, és újraimportáláskor sem duplikál.</p></div>
+          <div class="card"><div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h6"/></svg></div><h3>Bevallási segéd</h3><p>Megmutatja, mi kerül a 164. sor „a”, „e” és „f” oszlopába és a 06-os lap 202–209. sorába. Minden szám mellett van egy „Másol” gomb.</p></div>
+          <div class="card"><div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg></div><h3>Adókiegyenlítés, 2025-ös szabály</h3><p>A veszteség nem évül el, és az előző két évben befizetett adóból vissza is hozhat. A számítás követi a 2025-ös törvényváltozást.</p></div>
+          <div class="card"><div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div><h3>Élő adóhatás</h3><p>Rögzítés előtt látod, mennyivel változik az idei adód, és mennyit vehetsz még ki adómentesen.</p></div>
+          <div class="card"><div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 21h10"/></svg></div><h3>Windows, Linux, NixOS</h3><p>Kis méretű natív app (Tauri). Van Windows-telepítő és hordozható exe, Linuxra .deb és AppImage, valamint Nix flake.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="hogyan" style="padding-top:0">
+      <div class="wrap">
+        <span class="eyebrow">Hogyan működik</span>
+        <h2>Három lépés a bevallásig</h2>
+        <div class="steps">
+          <div class="step"><h3>Rögzíts vagy importálj</h3><p>Írd be, mennyi eurót váltottál kriptóra vagy vissza, vagy töltsd be a tőzsdei exportodat. A mínusz jel kivételt jelent.</p></div>
+          <div class="step"><h3>Nézd meg az adót</h3><p>Az app évenként kiszámolja az eredményt, a 15%-os adót és a levonható veszteséget, MNB árfolyamon.</p></div>
+          <div class="step"><h3>Másold át a NAV-ba</h3><p>A Bevallási segéd soronként megmutatja, mit kell beírni az eSZJA felületen, és egy kattintással másolhatod a számokat.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="osszevetes" style="padding-top:0">
+      <div class="wrap">
+        <span class="eyebrow">Miért helyi?</span>
+        <h2>A kriptós adataid a te dolgod</h2>
+        <p class="lead">A tranzakciós előzményeid elárulják, mennyi a vagyonod. Ezt nem kell egy újabb online fiókra bíznod.</p>
+        <div class="compare table-scroll">
+          <table>
+            <thead><tr><th></th><th class="us">Kriptomérleg</th><th>Tipikus webes kriptóadó-szolgáltatás</th></tr></thead>
+            <tbody>
+              <tr><td>Hol vannak az adataid?</td><td class="us"><span class="yes">●</span> A saját gépeden, egy fájlban</td><td>A szolgáltató szerverén</td></tr>
+              <tr><td>Regisztráció</td><td class="us">Nem kell</td><td>E-mail, jelszó, gyakran API-kulcs</td></tr>
+              <tr><td>Ha a szolgáltatás megszűnik</td><td class="us">Az app és az adataid megmaradnak</td><td>Az adatokat ki kell menteni</td></tr>
+              <tr><td>Biztonsági mentés</td><td class="us">Egy fájl másolása, vagy CSV export</td><td>Attól függ, mit enged az export</td></tr>
+              <tr><td>Ár</td><td class="us">Ingyenes béta</td><td>Jellemzően adóévenként vagy előfizetéssel fizetős</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="letoltes" style="padding-top:0">
+      <div class="wrap">
+        <span class="eyebrow">Letöltés</span>
+        <h2>Töltsd le ingyen</h2>
+        <p class="lead">Mindig a legfrissebb verzió. Korábbi kiadások és a változások listája: <a id="all-releases" href="#">összes kiadás</a>.</p>
+        <div class="downloads">
+          <div class="card dl" id="dl-windows">
+            <span class="tag" hidden>Ajánlott neked</span>
+            <h3>Windows</h3>
+            <p class="muted">Windows 10 és 11, 64 bites. A telepítő Start menü-ikont is létrehoz.</p>
+            <div class="btns">
+              <a class="btn primary" data-asset="kriptomerleg_windows_x64-setup.exe" href="#">Telepítő (.exe)</a>
+              <a class="btn ghost" data-asset="kriptomerleg_windows_x64-portable.exe" href="#">Hordozható, telepítés nélkül</a>
+            </div>
+          </div>
+          <div class="card dl" id="dl-linux">
+            <span class="tag" hidden>Ajánlott neked</span>
+            <h3>Linux</h3>
+            <p class="muted">Debian és Ubuntu alapú rendszerekre .deb, bármely más disztróra AppImage.</p>
+            <div class="btns">
+              <a class="btn primary" data-asset="kriptomerleg_linux_amd64.deb" href="#">Debian / Ubuntu (.deb)</a>
+              <a class="btn ghost" data-asset="kriptomerleg_linux_amd64.AppImage" href="#">AppImage</a>
+            </div>
+          </div>
+          <div class="card dl" id="dl-nix">
+            <h3>NixOS</h3>
+            <p class="muted">Nix flake: futtatás telepítés nélkül, vagy felvétel a rendszerkonfigurációba.</p>
+            <pre id="nix-cmd">nix run github:adamgyongyosi/kripto-ado</pre>
+            <div class="btns"><a class="btn ghost" id="nix-readme" href="#">Telepítés a konfigurációba</a></div>
+          </div>
+        </div>
+        <p class="cta-note">A Windows SmartScreen az első indításkor figyelmeztethet („Ismeretlen kiadó”), mert a telepítő még nincs digitálisan aláírva. Ilyenkor: <em>További információ → Futtatás mindenképp</em>.</p>
+      </div>
+    </section>
+
+    <section id="gyik" style="padding-top:0">
+      <div class="wrap">
+        <span class="eyebrow">GYIK</span>
+        <h2>Gyakori kérdések</h2>
+        <div class="faq">
+          <details><summary>Hol tárolja az adataimat?</summary><p>Egyetlen SQLite fájlban a gépeden. Windowson ez a <code>%APPDATA%\hu.kriptoado.app\</code> mappában van, Linuxon a <code>~/.local/share/hu.kriptoado.app/</code> mappában. Mentéshez elég ezt a fájlt átmásolni.</p></details>
+          <details><summary>Kell hozzá internet?</summary><p>Csak az MNB árfolyam lekéréséhez, a már lekért napokat megjegyzi. Internet nélkül az árfolyamot kézzel is megadhatod, például a banki bizonylatról.</p></details>
+          <details><summary>Melyik tőzsdéket tudja beolvasni?</summary><p>A Binance (Transaction History), a Revolut (kripto kivonat, régi és új formátum), a Kraken (Ledgers) és a Bybit (spot kereskedések, Convert) exportját. Ezek mellett a saját, évenkénti lapokra bontott Excel-táblázatodat is beolvassa. A repóban mindegyikhez van mintafájl.</p></details>
+          <details><summary>Hogyan számolja az adót?</summary><p>Az év eredménye a fiatra váltott kivételek (bevétel) és a kriptóra költött összegek (kiadás, díjakkal) különbsége, forintban. Ennek 15%-a a fizetendő SZJA. A veszteség 15%-a adókiegyenlítésként levonható, legfeljebb az adott és az előző két évben bevallott kriptóadó erejéig. A kripto–kripto csere nem adóköteles.</p></details>
+          <details><summary>Ez adótanácsadás?</summary><p>Nem. A Kriptomérleg tájékoztató számítást végez a NAV kitöltési útmutatója és a hatályos szabályok alapján. Bizonytalan esetben kérdezz könyvelőt vagy adótanácsadót.</p></details>
+          <details><summary>Mennyibe kerül?</summary><p>A béta időszakban ingyenes.</p></details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div>
+        <a class="brand" href="#"><img src="logo.svg" alt="" />Kriptomérleg</a>
+        <p style="margin-top:8px">A kriptóadód, a saját gépeden.</p>
+      </div>
+      <p class="disclaimer">Tájékoztató számítás, nem adótanácsadás. A NAV, az MNB és a feltüntetett tőzsdék nevei a tulajdonosaikéi; a Kriptomérleg nem áll kapcsolatban velük.</p>
+      <p><a id="gh-link" href="#">GitHub</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // Egy helyen a repó: ha átnevezed vagy publikus repóba költözik, csak ezt kell átírni.
+    const REPO = "adamgyongyosi/kripto-ado";
+    const GH = "https://github.com/" + REPO;
+    const latest = (asset) => GH + "/releases/latest/download/" + asset;
+
+    document.querySelectorAll("[data-asset]").forEach((a) => (a.href = latest(a.dataset.asset)));
+    document.getElementById("all-releases").href = GH + "/releases";
+    document.getElementById("gh-link").href = GH;
+    document.getElementById("nix-readme").href = GH + "#nixos";
+    document.getElementById("nix-cmd").textContent = "nix run github:" + REPO;
+
+    // Az operációs rendszerhez illő letöltés kiemelése.
+    const ua = navigator.userAgent;
+    const os = /Windows/i.test(ua) ? "windows" : /Linux|X11/i.test(ua) && !/Android/i.test(ua) ? "linux" : null;
+    if (os) {
+      const card = document.getElementById("dl-" + os);
+      card.classList.add("recommended");
+      card.querySelector(".tag").hidden = false;
+      const primary = card.querySelector(".btn.primary");
+      const cta = document.getElementById("cta-primary");
+      cta.href = primary.href;
+      document.getElementById("cta-label").textContent = os === "windows" ? "Letöltés Windowsra" : "Letöltés Linuxra (.deb)";
+      document.getElementById("cta-note").textContent =
+        (os === "windows" ? "Windows 10/11 telepítő" : "Debian/Ubuntu csomag") + " · ingyenes béta · más rendszerek lent";
+    }
+  </script>
+</body>
+</html>

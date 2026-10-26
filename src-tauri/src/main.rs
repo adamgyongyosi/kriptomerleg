@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    kripto_ado_lib::run()
+    kriptomerleg_lib::run()
 }

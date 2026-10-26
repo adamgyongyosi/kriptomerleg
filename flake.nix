@@ -1,5 +1,5 @@
 {
-  description = "Kripto adó – kriptó-SZJA kalkulátor (Tauri)";
+  description = "Kriptomérleg – magyar kriptó-SZJA kalkulátor (Tauri)";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -14,8 +14,8 @@
     in
     {
       packages = forAll (pkgs: rec {
-        kripto-ado = pkgs.callPackage ./nix/package.nix { };
-        default = kripto-ado;
+        kriptomerleg = pkgs.callPackage ./nix/package.nix { };
+        default = kriptomerleg;
       });
 
       apps = forAll (pkgs: {
@@ -36,7 +36,7 @@
       });
 
       overlays.default = final: _prev: {
-        kripto-ado = final.callPackage ./nix/package.nix { };
+        kriptomerleg = final.callPackage ./nix/package.nix { };
       };
     };
 }

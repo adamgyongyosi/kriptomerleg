@@ -15,10 +15,10 @@ jobs:
         include:
           - os: windows-latest
             bundles: nsis
-            artifact: kripto-ado-windows
+            artifact: kriptomerleg-windows
           - os: ubuntu-22.04
             bundles: deb,appimage
-            artifact: kripto-ado-linux
+            artifact: kriptomerleg-linux
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -49,19 +49,19 @@ jobs:
       - name: Tauri build
         run: npm run tauri build -- --bundles ${{ matrix.bundles }}
 
-      # Egységes, ékezet nélküli fájlnevek a release-hez.
+      # Egységes, ékezet és verziószám nélküli fájlnevek: így a
+      # releases/latest/download/<fájl> link mindig a legújabbra mutat (landing oldal).
       - name: Kimenetek összegyűjtése
         shell: bash
         run: |
-          VERSION=$(node -p "require('./package.json').version")
           mkdir -p out
           B=src-tauri/target/release/bundle
           if [ "$RUNNER_OS" = "Windows" ]; then
-            cp "$B"/nsis/*-setup.exe "out/kripto-ado_${VERSION}_windows_x64-setup.exe"
-            cp src-tauri/target/release/kripto-ado.exe "out/kripto-ado_${VERSION}_windows_x64-portable.exe"
+            cp "$B"/nsis/*-setup.exe "out/kriptomerleg_windows_x64-setup.exe"
+            cp src-tauri/target/release/kriptomerleg.exe "out/kriptomerleg_windows_x64-portable.exe"
           else
-            cp "$B"/deb/*.deb "out/kripto-ado_${VERSION}_linux_amd64.deb"
-            cp "$B"/appimage/*.AppImage "out/kripto-ado_${VERSION}_linux_amd64.AppImage"
+            cp "$B"/deb/*.deb "out/kriptomerleg_linux_amd64.deb"
+            cp "$B"/appimage/*.AppImage "out/kriptomerleg_linux_amd64.AppImage"
           fi
           ls -la out
 
@@ -79,7 +79,7 @@ jobs:
       - name: nix build (NixOS csomag)
         run: nix build .#default -L
       - name: Bináris ellenőrzése
-        run: test -x result/bin/kripto-ado
+        run: test -x result/bin/kriptomerleg
 
   release:
     # Minden main-re pusholt változásból és minden v* tagből új release készül.
@@ -103,10 +103,10 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="$GITHUB_REF_NAME"
-            NAME="Kripto adó $GITHUB_REF_NAME"
+            NAME="Kriptomérleg $GITHUB_REF_NAME"
           else
             TAG="v${VERSION}-build.${GITHUB_RUN_NUMBER}"
-            NAME="Kripto adó ${VERSION} (build ${GITHUB_RUN_NUMBER})"
+            NAME="Kriptomérleg ${VERSION} (build ${GITHUB_RUN_NUMBER})"
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
@@ -114,7 +114,7 @@ jobs:
             echo "## Letöltés"
             echo
             echo "- **Windows:** \`*_windows_x64-setup.exe\` (telepítő) vagy \`*_windows_x64-portable.exe\` (telepítés nélkül)"
-            echo "- **Linux (Debian/Ubuntu):** \`*_linux_amd64.deb\` → \`sudo apt install ./kripto-ado_*.deb\`"
+            echo "- **Linux (Debian/Ubuntu):** \`*_linux_amd64.deb\` → \`sudo apt install ./kriptomerleg_*.deb\`"
             echo "- **Linux (bármely):** \`*_linux_amd64.AppImage\` → \`chmod +x\`, majd futtatás"
             echo "- **NixOS:** \`nix run git+ssh://git@github.com/${GITHUB_REPOSITORY}\`"
             echo

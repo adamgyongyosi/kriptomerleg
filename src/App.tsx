@@ -108,8 +108,8 @@ function App() {
         <div className="brand">
           <IconLogo />
           <div>
-            <strong>Kripto adó</strong>
-            <span>SZJA kalkulátor</span>
+            <strong>Kriptomérleg</strong>
+            <span>kriptóadó, helyben</span>
           </div>
         </div>
 
@@ -149,7 +149,7 @@ function App() {
             <IconAlert />
             <span>
               Ezt az oldalt böngészőben nyitottad meg. Az adatok mentése és az MNB árfolyam csak az asztali appban működik –
-              indítsd a <strong>Kripto adó</strong> programot a Start menüből vagy a <code>kripto-ado.exe</code> fájlból.
+              indítsd a <strong>Kriptomérleg</strong> programot a Start menüből vagy a <code>kriptomerleg.exe</code> fájlból.
             </span>
           </div>
         )}
