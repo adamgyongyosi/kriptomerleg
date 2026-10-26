@@ -30,7 +30,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 - Windows + Linux egyszerre (Windowson, a Linux rész WSL-ben): `powershell -ExecutionPolicy Bypass -File scripts\build-all.ps1`
 - Csak Linux: `bash scripts/build-linux.sh`
-- GitHub Actions: minden pushnál Windows (NSIS) és Linux (.deb, AppImage) build, letölthető artifactként.
+- GitHub Actions: minden pushnál Windows (NSIS) és Linux (.deb, AppImage) build, letölthető artifactként, valamint egy `nix build` ellenőrzés a NixOS-csomaghoz.
 
 A kimenetek a `telepito/windows` és `telepito/linux` mappába kerülnek.
 
@@ -39,6 +39,30 @@ Linux függőségek (Debian/Ubuntu):
 ```bash
 sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 ```
+
+## NixOS
+
+A repóban van egy Nix flake (`flake.nix`, `nix/package.nix`), ebből a NixOS natívan fordítja az appot.
+
+Futtatás telepítés nélkül (a repó privát, ezért SSH-n keresztül):
+
+```bash
+nix run git+ssh://git@github.com/adamgyongyosi/kripto-ado
+```
+
+Rendszerszintű telepítés flake-alapú NixOS konfigurációban:
+
+```nix
+# flake.nix
+inputs.kripto-ado.url = "git+ssh://git@github.com/adamgyongyosi/kripto-ado";
+
+# configuration.nix (a modulnak átadott inputs-szal)
+environment.systemPackages = [ inputs.kripto-ado.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+```
+
+Fejlesztői környezet: `nix develop`, utána `npm install && npm run tauri dev`.
+
+Alternatíva: az AppImage NixOS-en `appimage-run`-nal indítható (`programs.appimage.enable = true;`).
 
 ## Felépítés
 

@@ -59,3 +59,13 @@ jobs:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.paths }}
           if-no-files-found: error
+
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - name: nix build (NixOS csomag)
+        run: nix build .#default -L
+      - name: Bináris ellenőrzése
+        run: test -x result/bin/kripto-ado
