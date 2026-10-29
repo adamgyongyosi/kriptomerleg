@@ -19,7 +19,10 @@ export function Filing({ year, years }: { year: number; years: YearSummary[] }) 
   const formCap = get(year - 2).taxGross + get(year - 1).taxGross + c.taxGross;
   // A korábbi veszteséget 15%-os adóértékben tartjuk nyilván; a 207. sorba forintban kell.
   const priorLossHuf = Math.round(Math.max(0, c.lossPool - c.lossCredit) / 0.15);
-  const nothing = c.depositsHuf === 0 && c.withdrawalsHuf === 0 && !hasOffset;
+  const nothing = c.depositsHuf === 0 && c.withdrawalsHuf === 0 && !hasOffset && c.carriedInHuf === 0;
+  // Korábbi veszteség, amelyet nem jelöltek bevallottnak, így nem számít bele.
+  const undeclared = years.filter((y) => y.year < year && y.lossCredit > 0 && !y.lossDeclared);
+  const showOffset = hasOffset || c.lossPool > 0 || (c.resultHuf > 0 && undeclared.length > 0);
 
   return (
     <div className="page filing">
@@ -42,7 +45,15 @@ export function Filing({ year, years }: { year: number; years: YearSummary[] }) 
         </div>
       )}
 
-      {nothing ? (
+      {c.preRegime ? (
+        <section className="panel">
+          <p className="empty">
+            2022 előtti év: a kriptoeszközök 15%-os szabálya 2022-től él. A korábban nem adózott ügyletek a NAV szerint a
+            2022-es eredménybe számítanak, ezért ezeket a tételeket a 22SZJA bevallás 164. sorában kell figyelembe venni (az
+            app így számol).
+          </p>
+        </section>
+      ) : nothing ? (
         <section className="panel">
           <p className="empty">Ebben az évben nincs kriptós tétel, nincs mit bevallani.</p>
         </section>
@@ -64,6 +75,13 @@ export function Filing({ year, years }: { year: number; years: YearSummary[] }) 
             ) : (
               <p className="muted">Az eredmény 0 Ft, ide nem kell semmit írni.</p>
             )}
+            {c.carriedInHuf !== 0 && (
+              <p className="muted small">
+                Benne vannak a 2022 előtti évek tételei is ({fmtFt(Math.abs(c.carriedInHuf))}
+                {c.carriedInHuf < 0 ? " befizetés" : " kivétel"}): a NAV szerint a korábban nem adózott ügyletek 2022-be
+                számítanak.
+              </p>
+            )}
             {c.resultHuf !== 0 && (
               <p className="muted small">
                 Nem kötelező: a {form}-10-es lapon az ügyletek tételes adatait is megadhatod (szerzés ideje, összege, tranzakció-azonosító).
@@ -71,7 +89,7 @@ export function Filing({ year, years }: { year: number; years: YearSummary[] }) 
             )}
           </Step>
 
-          {(hasOffset || c.lossPool > 0) && (
+          {showOffset && (
             <Step n={2} title="Adókiegyenlítés (veszteség levonása)" where={`${form}-06-os lap, 202–209. sor`}>
               <p className="step-intro">
                 A veszteség 15%-a levonható, legfeljebb a {year - 2}–{year}. évben bevallott kriptoadó erejéig (keret). A
@@ -84,7 +102,14 @@ export function Filing({ year, years }: { year: number; years: YearSummary[] }) 
               <Row line="205." col="b" label="Keret összesen (202–204.)" value={formCap} />
               <h3 className="sub">Veszteség</h3>
               <Row line="206." col="a" label={`${year}. évi veszteség`} value={c.resultHuf < 0 ? -c.resultHuf : 0} />
-              <Row line="207." col="a" label="Korábbi évek még el nem számolt vesztesége" value={priorLossHuf} />
+              <Row line="207." col="a" label="Korábbi évek még el nem számolt, bevallott vesztesége" value={priorLossHuf} />
+              {undeclared.length > 0 && (
+                <p className="step-note warn-text">
+                  <IconAlert /> Nem számoltuk bele: {undeclared.map((y) => `${y.year} (${fmtFt(-y.resultHuf)})`).join(", ")}, mert
+                  nincs bevallottként jelölve. Ha az adott évi bevallásban szerepelt, jelöld az Évek és adó oldalon; ha
+                  kimaradt, előbb önellenőrzéssel pótold.
+                </p>
+              )}
               <Row line="208." col="c" label="Jogosító összeg: (206. + 207.) × 15%" value={c.lossPool} />
               <h3 className="sub">Eredmény</h3>
               <Row line="209." col="c" label={
@@ -106,7 +131,7 @@ export function Filing({ year, years }: { year: number; years: YearSummary[] }) 
             </Step>
           )}
 
-          <Step n={hasOffset || c.lossPool > 0 ? 3 : 2} title="Végeredmény" where="az app számítása szerint">
+          <Step n={showOffset ? 3 : 2} title="Végeredmény" where="az app számítása szerint">
             <div className={`final ${c.taxDue > 0 ? "bad" : "good"}`}>
               {c.taxDue > 0 ? <IconAlert /> : <IconCheck />}
               <span>

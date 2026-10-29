@@ -71,6 +71,15 @@ function App() {
     }
   }
 
+  async function declareLoss(y: number, declared: boolean) {
+    try {
+      await api.setLossDeclared(y, declared);
+      await reload();
+    } catch (err) {
+      notify(String(err), true);
+    }
+  }
+
   async function importExcel() {
     setImportOpen(false);
     const path = await open({ multiple: false, filters: [{ name: "Excel", extensions: ["xlsx", "xlsm", "xls"] }] });
@@ -165,6 +174,7 @@ function App() {
             onError={(m) => notify(m, true)}
             onEdit={setEditing}
             onShowAll={() => setPage("transactions")}
+            onDeclare={declareLoss}
           />
         )}
         {page === "transactions" && (
@@ -192,7 +202,7 @@ function App() {
             }}
           />
         )}
-        {page === "years" && <Years years={years} selected={year} onSelect={setYear} />}
+        {page === "years" && <Years years={years} selected={year} onSelect={setYear} onDeclare={declareLoss} />}
         {page === "filing" && <Filing year={year} years={years} />}
       </main>
 
@@ -243,8 +253,11 @@ function Overview(props: {
   onError: (m: string) => void;
   onEdit: (t: Tx) => void;
   onShowAll: () => void;
+  onDeclare: (year: number, declared: boolean) => void;
 }) {
   const { year, current: c, txs } = props;
+  // Korábbi veszteséges évek: csak a bevallott veszteség csökkenti az idei adót.
+  const priorLosses = props.years.filter((y) => y.year < year && y.lossCredit > 0);
 
   const monthly = useMemo(() => {
     const deposits = Array(12).fill(0);
@@ -258,10 +271,12 @@ function Overview(props: {
   }, [txs]);
 
   let status: { tone: "good" | "bad" | "neutral"; text: string };
-  if (c.taxDue > 0) {
+  if (c.preRegime) {
+    status = { tone: "neutral", text: "2022 előtti év: ezek a tételek a NAV szerint a 2022-es eredménybe számítanak." };
+  } else if (c.taxDue > 0) {
     status = {
       tone: "bad",
-      text: `${fmtFt(c.resultHuf)} nyereség után${c.offsetUsed ? `, ${fmtFt(c.offsetUsed)} levonással` : ""}, ${year + 1}. május 20-ig.`,
+      text: `${fmtFt(c.resultHuf)} nyereség után${c.offsetUsed ? `, ${fmtFt(c.offsetUsed)} adókiegyenlítéssel (korábbi veszteség)` : ""}, ${year + 1}. május 20-ig.`,
     };
   } else if (c.taxDue < 0) {
     status = { tone: "good", text: "A veszteség miatt a korábbi évek adójából visszajár (adókiegyenlítés)." };
@@ -311,13 +326,23 @@ function Overview(props: {
           </div>
         </section>
 
+        {c.resultHuf > 0 && priorLosses.length > 0 && (
+          <LossDeclarations years={priorLosses} onDeclare={props.onDeclare} />
+        )}
+
         <section className="stats">
           <Stat label="Befizetve" value={fmtFt(c.depositsHuf)} swatch="--series-1" />
           <Stat label="Kivéve" value={fmtFt(c.withdrawalsHuf)} swatch="--series-2" />
           <Stat
             label={c.resultHuf >= 0 ? "Nyereség" : "Veszteség"}
             value={fmtFt(Math.abs(c.resultHuf))}
-            hint="kivéve − befizetve"
+            hint={
+              c.preRegime
+                ? "a 2022-es évbe számít"
+                : c.carriedInHuf
+                  ? `kivéve − befizetve, a 2022 előtti ${fmtFt(-c.carriedInHuf)}-tal együtt`
+                  : "kivéve − befizetve"
+            }
           />
           <Stat
             label="Fel nem használt veszteség"
@@ -529,9 +554,45 @@ function Transactions(props: {
   );
 }
 
+function LossDeclarations(props: { years: YearSummary[]; onDeclare: (year: number, declared: boolean) => void }) {
+  const missing = props.years.filter((y) => !y.lossDeclared);
+  return (
+    <section className={`notice loss-notice ${missing.length ? "warn" : "ok"}`}>
+      {missing.length ? <IconAlert /> : <IconCheck />}
+      <div>
+        <strong>Korábbi veszteség – csak bevallva vonható le</strong>
+        <p>
+          A korábbi évek vesztesége akkor csökkenti az idei adót, ha az adott évi SZJA-bevallásban (164. sor „a” oszlop)
+          feltüntetted. Jelöld, melyik évben vallottad be:
+        </p>
+        <div className="loss-years">
+          {props.years.map((y) => (
+            <label key={y.year}>
+              <input type="checkbox" checked={y.lossDeclared} onChange={(e) => props.onDeclare(y.year, e.target.checked)} />
+              <span>
+                <strong>{y.year}</strong> · {fmtFt(-y.resultHuf)} veszteség
+              </span>
+            </label>
+          ))}
+        </div>
+        {missing.length > 0 && (
+          <p className="small">
+            Ha kimaradt, az adott évi bevallás önellenőrzésével pótolhatod (5 éven belül), utána jelöld be itt.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /* ───────────── Évek ───────────── */
 
-function Years(props: { years: YearSummary[]; selected: number; onSelect: (y: number) => void }) {
+function Years(props: {
+  years: YearSummary[];
+  selected: number;
+  onSelect: (y: number) => void;
+  onDeclare: (year: number, declared: boolean) => void;
+}) {
   const { years } = props;
   return (
     <div className="page">
@@ -569,6 +630,9 @@ function Years(props: { years: YearSummary[]; selected: number; onSelect: (y: nu
                     <th className="num" title="Korábbi veszteség 15%-ából levonva">Levonva</th>
                     <th className="num">Fizetendő</th>
                     <th className="num" title="Az év veszteségének 15%-a: ebből mennyi maradt még felhasználatlanul">Veszteség (15%)</th>
+                    <th title="Feltüntetted-e a veszteséget az adott évi SZJA-bevallásban (164. sor „a”)? Később csak a bevallott veszteség vonható le.">
+                      Bevallva
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -577,20 +641,40 @@ function Years(props: { years: YearSummary[]; selected: number; onSelect: (y: nu
                       <td className="strong">{y.year}</td>
                       <td className="num">{fmtFt(y.depositsHuf)}</td>
                       <td className="num">{fmtFt(y.withdrawalsHuf)}</td>
-                      <td className="num">
-                        {y.resultHuf > 0 ? "+" : y.resultHuf < 0 ? "−" : ""}
-                        {fmtFt(Math.abs(y.resultHuf))}
+                      <td className="num" title={y.carriedInHuf ? `Benne a 2022 előtti évek ${fmtFt(-y.carriedInHuf)} befizetése` : undefined}>
+                        {y.preRegime ? (
+                          <span className="muted">→ 2022</span>
+                        ) : (
+                          <>
+                            {y.resultHuf > 0 ? "+" : y.resultHuf < 0 ? "−" : ""}
+                            {fmtFt(Math.abs(y.resultHuf))}
+                            {y.carriedInHuf !== 0 && "*"}
+                          </>
+                        )}
                       </td>
                       <td className="num">{fmtFt(y.taxGross)}</td>
                       <td className="num">{y.offsetUsed ? `−${fmtFt(y.offsetUsed)}` : "–"}</td>
                       <td className="num strong">{fmtTax(y.taxDue)}</td>
                       <td className="num muted">
-                        {y.lossCredit ? (
+                        {!y.lossCredit ? (
+                          "–"
+                        ) : y.lossDeclared ? (
                           <>
                             {fmtFt(y.lossCreditRemaining)} maradt / {fmtFt(y.lossCredit)}
                           </>
                         ) : (
-                          "–"
+                          <span className="warn-text">nem vonható le később</span>
+                        )}
+                      </td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        {y.lossCredit > 0 && (
+                          <input
+                            type="checkbox"
+                            className="declare"
+                            checked={y.lossDeclared}
+                            onChange={(e) => props.onDeclare(y.year, e.target.checked)}
+                            aria-label={`${y.year}. évi veszteség bevallva`}
+                          />
                         )}
                       </td>
                     </tr>
@@ -598,6 +682,9 @@ function Years(props: { years: YearSummary[]; selected: number; onSelect: (y: nu
                 </tbody>
               </table>
             </div>
+            {years.some((y) => y.carriedInHuf !== 0) && (
+              <p className="muted small table-foot">* Benne vannak a 2022 előtti évek tételei is (NAV: a korábban nem adózott ügyletek 2022-be számítanak).</p>
+            )}
           </section>
         </>
       )}
@@ -614,7 +701,12 @@ function Years(props: { years: YearSummary[]; selected: number; onSelect: (y: nu
           <li>
             <strong>Veszteség</strong> esetén annak 15%-a levonható (adókiegyenlítés), legfeljebb az adott és az előző két évben
             bevallott kriptoadó erejéig – így a korábban befizetett adó vissza is járhat. A 2025-ös bevallástól a veszteség
-            nem évül el, de csak akkor használható, ha az adott évben bevallottad.
+            nem évül el, de csak akkor használható, ha az adott évben bevallottad – ezt a „Bevallva” oszlopban jelöld.
+            Lejárt határidejű évnél az app alapból bevallatlannak veszi.
+          </li>
+          <li>
+            <strong>2022 előtti</strong> tételek: a kriptoszabályok 2022-től élnek; a korábban nem adózott vételek és
+            eladások a NAV szerint a 2022-es eredménybe számítanak.
           </li>
           <li>
             <strong>EUR</strong> tételeknél a teljesítés napján érvényes MNB árfolyam számít; hétvégén és ünnepnap az utolsó

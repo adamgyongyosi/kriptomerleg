@@ -6,7 +6,7 @@ mod tax;
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, State};
@@ -85,6 +85,10 @@ fn init_db(conn: &Connection) -> rusqlite::Result<()> {
             date     TEXT NOT NULL,
             rate     REAL NOT NULL,
             PRIMARY KEY (currency, date)
+        );
+        CREATE TABLE IF NOT EXISTS loss_declarations (
+            year     INTEGER PRIMARY KEY,
+            declared INTEGER NOT NULL
         );",
     )?;
     let version: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
@@ -229,7 +233,41 @@ fn compute_summary_with(conn: &Connection, extra: Option<Hypothetical>) -> Resul
         let t = totals.entry(e.year).or_default();
         if e.huf > 0 { t.0 += e.huf } else { t.1 -= e.huf }
     }
-    Ok(tax::summarize(&totals, Local::now().year()))
+    let today = Local::now().date_naive();
+    let undeclared = undeclared_years(conn, &totals, today)?;
+    Ok(tax::summarize(&totals, today.year(), &undeclared))
+}
+
+/// Azok az évek, amelyek veszteségét nem vallották be. Ha a felhasználó nem jelölte, a már lejárt
+/// határidejű évet (május 20.) bevallatlannak vesszük, a még be nem adottat bevallottnak.
+fn undeclared_years(
+    conn: &Connection,
+    totals: &BTreeMap<i32, (i64, i64)>,
+    today: NaiveDate,
+) -> Result<BTreeSet<i32>, String> {
+    let marked: BTreeMap<i32, bool> = conn
+        .prepare("SELECT year, declared FROM loss_declarations")
+        .and_then(|mut s| s.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?.collect())
+        .map_err(err)?;
+    let Some(&first) = totals.keys().next() else { return Ok(BTreeSet::new()) };
+    Ok((first.max(tax::FIRST_YEAR)..=today.year())
+        .filter(|y| {
+            let deadline_passed = NaiveDate::from_ymd_opt(y + 1, 5, 20).is_some_and(|d| today > d);
+            !marked.get(y).copied().unwrap_or(!deadline_passed)
+        })
+        .collect())
+}
+
+/// Bevallotta-e a felhasználó az adott év veszteségét.
+#[tauri::command]
+fn set_loss_declared(state: State<'_, AppState>, year: i32, declared: bool) -> Result<(), String> {
+    state
+        .db
+        .lock()
+        .unwrap()
+        .execute("INSERT OR REPLACE INTO loss_declarations (year, declared) VALUES (?1, ?2)", params![year, declared])
+        .map_err(err)?;
+    Ok(())
 }
 
 /// Egy még nem mentett (vagy éppen szerkesztett) tétel hatása az adóra.
@@ -527,11 +565,18 @@ fn export_csv(state: State<'_, AppState>, path: String) -> Result<(), String> {
         }
         writeln!(f)?;
         writeln!(f, "Éves összesítő")?;
-        writeln!(f, "Év;Befizetve (Ft);Kivéve (Ft);Eredmény (Ft);Adó 15% (Ft);Adókiegyenlítés (Ft);Fizetendő adó, negatív = visszajár (Ft);Veszteség 15%-a (Ft);Ebből fel nem használt (Ft)")?;
+        writeln!(f, "Év;Befizetve (Ft);Kivéve (Ft);Eredmény (Ft);Adó 15% (Ft);Adókiegyenlítés (Ft);Fizetendő adó, negatív = visszajár (Ft);Veszteség 15%-a (Ft);Ebből fel nem használt (Ft);Megjegyzés")?;
         for y in &years {
+            let remark = if y.pre_regime {
+                "2022-be számít"
+            } else if y.loss_credit > 0 && !y.loss_declared {
+                "veszteség nincs bevallva"
+            } else {
+                ""
+            };
             writeln!(
                 f,
-                "{};{};{};{};{};{};{};{};{}",
+                "{};{};{};{};{};{};{};{};{};{}",
                 y.year,
                 y.deposits_huf,
                 y.withdrawals_huf,
@@ -540,7 +585,8 @@ fn export_csv(state: State<'_, AppState>, path: String) -> Result<(), String> {
                 y.offset_used,
                 y.tax_due,
                 y.loss_credit,
-                y.loss_credit_remaining
+                y.loss_credit_remaining,
+                remark
             )?;
         }
         f.flush()
@@ -573,6 +619,7 @@ pub fn run() {
             preview_import,
             commit_import,
             delete_by_source,
+            set_loss_declared,
             export_csv
         ])
         .run(tauri::generate_context!())

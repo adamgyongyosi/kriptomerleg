@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { api, Currency, fmtDate, fmtFt, fmtRate, fmtTax, parseAmount, RateInfo, today, Tx, YearSummary } from "./api";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { api, Currency, fmtDate, fmtFt, fmtRate, fmtTax, formatAmountInput, parseAmount, RateInfo, today, Tx, YearSummary } from "./api";
 import { IconArrow } from "./Icons";
 
 type Kind = "in" | "out";
@@ -17,7 +17,7 @@ interface Props {
 
 export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete }: Props) {
   const [kind, setKind] = useState<Kind>(editing && editing.amount < 0 ? "out" : "in");
-  const [amountText, setAmountText] = useState(editing ? String(Math.abs(editing.amount)).replace(".", ",") : "");
+  const [amountText, setAmountText] = useState(editing ? formatAmountInput(String(Math.abs(editing.amount))) : "");
   const [currency, setCurrency] = useState<Currency>(editing?.currency ?? "EUR");
   const [date, setDate] = useState(editing?.date ?? today());
   const [manualRate, setManualRate] = useState(
@@ -29,6 +29,7 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
   const [preview, setPreview] = useState<YearSummary | null>(null);
   const [busy, setBusy] = useState(false);
   const amountRef = useRef<HTMLInputElement>(null);
+  const caretRef = useRef<number | null>(null);
 
   const abs = parseAmount(amountText);
   const amount = abs === null ? null : kind === "out" ? -Math.abs(abs) : Math.abs(abs);
@@ -74,14 +75,32 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
     return () => window.clearTimeout(t);
   }, [huf, year, editing?.id]);
 
-  function onAmountChange(v: string) {
+  function onAmountChange(input: HTMLInputElement) {
+    let v = input.value;
     // A mínusz előjel kivételt jelent.
     if (/^\s*-/.test(v)) {
       setKind("out");
       v = v.replace("-", "");
     }
-    setAmountText(v);
+    // A kurzor a formázás után is ugyanannyi számjegy után maradjon.
+    const caret = input.selectionStart ?? v.length;
+    const significant = (x: string) => x.replace(/[^\d.,]/g, "").length;
+    const before = significant(input.value.slice(0, caret));
+    const formatted = formatAmountInput(v);
+    let pos = 0;
+    for (let seen = 0; pos < formatted.length && seen < before; pos++) {
+      if (/[\d,]/.test(formatted[pos])) seen++;
+    }
+    caretRef.current = pos;
+    setAmountText(formatted);
   }
+
+  useLayoutEffect(() => {
+    if (caretRef.current !== null && document.activeElement === amountRef.current) {
+      amountRef.current?.setSelectionRange(caretRef.current, caretRef.current);
+    }
+    caretRef.current = null;
+  }, [amountText]);
 
   const valid =
     amount !== null &&
@@ -144,7 +163,7 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
             autoFocus
             placeholder="0"
             value={amountText}
-            onChange={(e) => onAmountChange(e.target.value)}
+            onChange={(e) => onAmountChange(e.target)}
             aria-label="Összeg"
           />
           <div className="ccy-toggle" role="radiogroup" aria-label="Deviza" onClick={(e) => e.stopPropagation()}>

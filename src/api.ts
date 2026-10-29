@@ -83,6 +83,12 @@ export interface YearSummary {
   lossCredit: number;
   lossCreditRemaining: number;
   taxFreeHeadroom: number;
+  /** 2022 előtti év: az eredménye a 2022-es évbe számít. */
+  preRegime: boolean;
+  /** 2022-ben: a 2022 előtti évek eredménye, amely itt számít. */
+  carriedInHuf: number;
+  /** A veszteséget bevallották (csak így vonható le később). */
+  lossDeclared: boolean;
 }
 
 export const api = {
@@ -100,6 +106,7 @@ export const api = {
   commitImport: (source: string, rows: ImportRow[]) =>
     invoke<{ imported: number; skipped: number }>("commit_import", { source, rows }),
   deleteBySource: (source: string, year: number | null) => invoke<number>("delete_by_source", { source, year }),
+  setLossDeclared: (year: number, declared: boolean) => invoke<void>("set_loss_declared", { year, declared }),
 };
 
 const huf = new Intl.NumberFormat("hu-HU", { maximumFractionDigits: 0 });
@@ -132,6 +139,18 @@ export const fmtRate = (n: number) => dec.format(n);
 export const fmtAmount = (n: number, currency: Currency) =>
   currency === "HUF" ? fmtFt(n) : `${dec.format(n)} ${currency}`;
 
+/** Gépelés közbeni formázás: ezres tagolás nem törő szóközzel, tizedesvessző. */
+export function formatAmountInput(s: string): string {
+  let t = s.replace(/[\s ]/g, "");
+  // "1.000,50" és "1.000.000": a pont ezres tagolás; egyébként tizedesjel.
+  if (t.includes(",") || /^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
+  else t = t.replace(".", ",");
+  t = t.replace(/[^\d,]/g, "");
+  const [int, ...rest] = t.split(",");
+  const grouped = int.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return rest.length ? `${grouped || "0"},${rest.join("")}` : grouped;
+}
+
 /** "1 000,50", "-250", "1.000,5" → szám. */
 export function parseAmount(s: string): number | null {
   const t = s.replace(/[\s ]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
@@ -152,6 +171,9 @@ export const emptyYear = (year: number): YearSummary => ({
   lossCredit: 0,
   lossCreditRemaining: 0,
   taxFreeHeadroom: 0,
+  preRegime: year < 2022,
+  carriedInHuf: 0,
+  lossDeclared: true,
 });
 
 export const MONTHS = ["jan", "febr", "márc", "ápr", "máj", "jún", "júl", "aug", "szept", "okt", "nov", "dec"];

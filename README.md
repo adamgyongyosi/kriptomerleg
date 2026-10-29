@@ -6,16 +6,32 @@
 
 Weboldal: <https://adamgyongyosi.github.io/kripto-ado/> (a `site/` mappából, lásd [Weboldal](#weboldal)).
 
-- Gyors rögzítés: Befizetés / Kivétel kapcsoló, € / Ft váltó (alapértelmezés: EUR, minden mentés után visszaáll), és élőben látszik, mennyivel változik az évi adó. Mínusz jellel beírt összeg automatikusan kivétel.
+- Gyors rögzítés: Befizetés / Kivétel kapcsoló, € / Ft váltó (alapértelmezés: EUR, minden mentés után visszaáll), és élőben látszik, mennyivel változik az évi adó. Mínusz jellel beírt összeg automatikusan kivétel. Az összeg mező gépelés közben ezres tagolást kap (`899 100`); `1.000.000` és `1.000,50` alakban beillesztve is jól értelmezi.
 - EUR tételeknél az MNB hivatalos árfolyamát automatikusan lekéri a teljesítés napjára (hétvégén/ünnepnap az utolsó közzétettet); kattintásra kézi (pl. banki) árfolyam is megadható. Forintos tétel is rögzíthető.
 - Éves eredmény = kivételek − befizetések; nyereség után 15% SZJA.
-- Adókiegyenlítés: a veszteség 15%-a levonható, legfeljebb a tárgyévi és az előző két évi kriptoadó erejéig; a 2025-ös bevallástól a veszteség nem évül el (2025. évi LXXXIII. tv.).
+- Adókiegyenlítés: a veszteség 15%-a levonható, legfeljebb a tárgyévi és az előző két évi kriptoadó erejéig; a 2025-ös bevallástól a veszteség nem évül el (2025. évi LXXXIII. tv.). Korábbi év vesztesége csak akkor, ha azt annak az évnek a bevallásában feltüntették – ezt évenként jelölni kell (lásd [Az adószámítás szabályai](#az-adószámítás-szabályai)).
 - Bevallási segéd: mit kell a 25SZJA 164. sorába és a 06-os lap 202–209. sorába írni (NAV kitöltési útmutató alapján).
 - **Tőzsdei import:** Binance, Revolut, Kraken és Bybit export (CSV/Excel) beolvasása – a fiat ↔ kripto ügyletek díjakkal együtt, naponta összevonva, MNB árfolyamon.
 - Régi Excel import (évszám nevű lapok, A: dátum, B: forint), CSV export.
 - Adatok helyben, SQLite-ban.
 
 > Tájékoztató számítás, nem adótanácsadás.
+
+## Az adószámítás szabályai
+
+A számítás az Szja tv. 67/C. §-án és a NAV tájékoztatóin alapul:
+
+1. **Éves eredmény** = az év kivételei (bevétel) − az év befizetései (kriptóra fordított kiadás), forintban. Nyereség után 15% SZJA, határidő a következő év május 20.
+2. **2022 előtti tételek:** a 15%-os kriptoszabály 2022-től él. A korábban nem adózott ügyletek a NAV szerint a **2022-es eredménybe** számítanak, ezért az app a 2021-es (és korábbi) befizetéseket 2022-höz adja; a 2021-es évnek nincs külön eredménye.
+3. **Adókiegyenlítés** (67/C. § (5)–(7)): a veszteség 15%-a érvényesíthető, legfeljebb a tárgyévi és az előző két évben bevallott kriptoadó erejéig, csökkentve az előző két évben már érvényesített kiegyenlítéssel (25SZJA-06 lap 202–209. sor → C lap 75. sor).
+4. **Csak a bevallott veszteség vonható le később.** A NAV szerint az adókiegyenlítés csak akkor alkalmazható, ha a veszteséget a keletkezés évének bevallásában (164. sor „a” oszlop) feltüntették. Az *Évek és adó* oldal *Bevallva* oszlopában, illetve az *Áttekintés* figyelmeztetésében évenként jelölhető, melyik évét vallottad be. Ha nincs jelölve:
+   - lejárt határidejű évnél (pl. a 2024-es veszteség, határidő 2025. május 20.) az app **bevallatlannak** veszi, és nem vonja le;
+   - a még be nem adott évnél (a folyó év) bevallottnak veszi, mert a bevallási segéd szerint fogod kitölteni.
+
+   Ha egy korábbi év vesztesége kimaradt, az adott évi bevallás önellenőrzésével pótolható (5 éven belül), utána jelöld be.
+5. **Időkorlát:** a 2025-ös bevallástól (2025. évi LXXXIII. tv.) bármely korábbi év bevallott, még fel nem használt vesztesége figyelembe vehető; a régi kétéves szabály a 2022-től kezdődő évekre ugyanezt adja.
+
+Példa: 2022–2025 között csak befizetések (összesen 18 027 000 Ft veszteség), 2026-ban 24 021 003 Ft nyereség. Bruttó adó 3 603 150 Ft. Ha mind a négy év veszteségét bevallottad, 2 704 050 Ft adókiegyenlítés jár, és 899 100 Ft marad fizetendő; ha egyiket sem, 3 603 150 Ft a fizetendő.
 
 ## Letöltés
 
@@ -91,6 +107,8 @@ Ugyanebben a mappában a beépített böngészőmotor (WebView) gyorsítótára 
 | `created_at` | TEXT | rögzítés ideje |
 
 `rates` – az MNB-től már lekért árfolyamok gyorsítótára (`currency`, `date`, `rate`), hogy ugyanazt a napot ne kelljen újra lekérni.
+
+`loss_declarations` – évenként (`year`) a felhasználó jelölése (`declared`: 1/0), hogy az év veszteségét feltüntette-e az SZJA-bevallásban. Ha egy évhez nincs sor, az alapértelmezést lásd [fent](#az-adószámítás-szabályai).
 
 Az éves összesítő és az adó nincs eltárolva, mindig a tételekből számolódik. Az adatbázis sémaverzióját a `PRAGMA user_version` tárolja; régebbi adatbázist az app induláskor automatikusan frissít.
 

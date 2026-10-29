@@ -1249,3 +1249,43 @@ tr:hover .icon {
 .import-rows th {
   padding: 7px 10px;
 }
+
+/* ── Korábbi veszteség bevallása ── */
+.notice.ok {
+  background: var(--good-bg);
+  color: var(--good);
+}
+.loss-notice {
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+.loss-notice p {
+  margin: 4px 0 8px;
+  color: var(--ink);
+}
+.loss-years {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  color: var(--ink);
+}
+.loss-years label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.loss-years input,
+input.declare {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.warn-text {
+  color: var(--warn);
+}
+.table-foot {
+  padding: 10px 16px 14px;
+  margin: 0;
+}
