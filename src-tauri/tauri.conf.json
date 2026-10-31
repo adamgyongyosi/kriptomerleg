@@ -50,13 +50,13 @@
     "category": "Finance",
     "longDescription": "Kriptó befizetések és kivételek nyilvántartása, MNB árfolyamon számolt 15% SZJA, tőzsdei import és NAV-bevallási segéd. Minden adat a saját gépeden marad.",
     "publisher": "Kriptomérleg",
-    "homepage": "https://adamgyongyosi.github.io/kripto-ado/"
+    "homepage": "https://adamgyongyosi.github.io/kriptomerleg/"
   },
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUyODZFMEY4NTAzNDMxRjUKUldUMU1UUlErT0NHVWxkSElub3g1THFrN2NyUEF2ZjRCTGRMM0grWitRUTNtVE1UWjVOTENxOGoK",
       "endpoints": [
-        "https://github.com/adamgyongyosi/kripto-ado/releases/latest/download/latest.json"
+        "https://github.com/adamgyongyosi/kriptomerleg/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

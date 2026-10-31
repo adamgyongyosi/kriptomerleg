@@ -2,7 +2,7 @@ import { check, Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { inDesktopApp } from "./api";
 
-export const RELEASES_URL = "https://github.com/adamgyongyosi/kripto-ado/releases/latest";
+export const RELEASES_URL = "https://github.com/adamgyongyosi/kriptomerleg/releases/latest";
 
 /**
  * Új verzió keresése a GitHub Release `latest.json` fájlja alapján. Hálózati hiba vagy hiányzó

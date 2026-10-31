@@ -4,7 +4,7 @@
 
 **A kriptóadód, a saját gépeden.** Asztali alkalmazás (Windows, Linux, NixOS) a kriptóba befizetett és onnan kivett összegek nyilvántartására és a magyar kriptó-SZJA kiszámítására – fiók és felhő nélkül, minden adat helyben marad.
 
-Weboldal: <https://adamgyongyosi.github.io/kripto-ado/> (a `site/` mappából, lásd [Weboldal](#weboldal)).
+Weboldal: <https://adamgyongyosi.github.io/kriptomerleg/> (a `site/` mappából, lásd [Weboldal](#weboldal)). Repó: <https://github.com/adamgyongyosi/kriptomerleg> (2026. október 31-ig `kripto-ado` volt a neve; a GitHub a régi címekről átirányít).
 
 - Gyors rögzítés: Befizetés / Kivétel / Fizetés kriptóval kapcsoló, € / Ft váltó és a „…” menüben USD, GBP, CHF (alapértelmezés: EUR, minden mentés után visszaáll), és élőben látszik, mennyivel változik az évi adó. Mínusz jellel beírt összeg automatikusan kivétel. Az összeg mező gépelés közben ezres tagolást kap (`899 100`); `1.000.000` és `1.000,50` alakban beillesztve is jól értelmezi.
 - Devizás (EUR, USD, GBP, CHF) tételeknél az MNB hivatalos árfolyamát automatikusan lekéri a teljesítés napjára (hétvégén/ünnepnap az utolsó közzétettet); kattintásra kézi (pl. banki) árfolyam is megadható. Forintos tétel is rögzíthető.
@@ -45,7 +45,7 @@ Példa: 2022–2025 között csak befizetések (összesen 18 027 000 Ft vesztes�
 
 ## Letöltés
 
-Minden `main`-re pusholt változásból automatikusan új **[Release](https://github.com/adamgyongyosi/kripto-ado/releases)** készül (`v<verzió>-build.<szám>`), egy `v*` tagből pedig verziózott kiadás. A release-ben:
+Minden `main`-re pusholt változásból automatikusan új **[Release](https://github.com/adamgyongyosi/kriptomerleg/releases)** készül saját verziószámmal: a `package.json` fő- és alverziója, harmadik tagként a CI futás sorszáma (pl. `v0.3.12`, „Kriptomérleg 0.3.12”). Ez a verzió kerül az appba is, így az automatikus frissítő minden újabb kiadást felajánl. Egy `v*` tag (pl. `v1.0.0`) pontosan azt a verziót adja ki. A release-ben:
 
 | Fájl | Rendszer |
 |---|---|
@@ -54,7 +54,7 @@ Minden `main`-re pusholt változásból automatikusan új **[Release](https://gi
 | `kriptomerleg_linux_amd64.deb` | Debian / Ubuntu: `sudo apt install ./kriptomerleg_linux_amd64.deb` |
 | `kriptomerleg_linux_amd64.AppImage` | bármely Linux: `chmod +x`, majd futtatás |
 
-A fájlnevekben nincs verziószám, így a `https://github.com/adamgyongyosi/kripto-ado/releases/latest/download/<fájlnév>` link mindig a legfrissebbre mutat (a weboldal letöltőgombjai is ezt használják). A verzió a release nevében és tagjében szerepel.
+A fájlnevekben nincs verziószám, így a `https://github.com/adamgyongyosi/kriptomerleg/releases/latest/download/<fájlnév>` link mindig a legfrissebbre mutat (a weboldal letöltőgombjai is ezt használják). A verzió a release nevében és tagjében szerepel.
 
 NixOS-re lásd lent.
 
@@ -175,7 +175,7 @@ A `npm test` a felület-teszteket futtatja (Vitest + Testing Library, jsdom): ö
 
 ### Automatikus frissítés (updater)
 
-- Az app a `https://github.com/adamgyongyosi/kripto-ado/releases/latest/download/latest.json` fájlból tudja meg a legújabb verziót; a csomagokat a `tauri.conf.json`-ban lévő nyilvános kulccsal ellenőrzi.
+- Az app a `https://github.com/adamgyongyosi/kriptomerleg/releases/latest/download/latest.json` fájlból tudja meg a legújabb verziót; a csomagokat a `tauri.conf.json`-ban lévő nyilvános kulccsal ellenőrzi.
 - Az aláíráshoz a CI-nek két titok kell (*Settings → Secrets and variables → Actions*): `TAURI_SIGNING_PRIVATE_KEY` (a privát kulcsfájl tartalma) és `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (üres, ha a kulcsnak nincs jelszava). Ha nincsenek beállítva, a build ugyanúgy elkészül, csak `latest.json` és `.sig` fájlok nélkül.
 - Új kulcspár: `npx tauri signer generate -w ~/.tauri/kriptomerleg-updater.key`, majd a `.pub` tartalma a `tauri.conf.json` `plugins.updater.pubkey` mezőjébe. A privát kulcs ne kerüljön a repóba.
 - A frissítés csak publikus repóból működik (privát repó kiadásai bejelentkezés nélkül nem tölthetők le); ugyanez igaz a weboldal letöltőgombjaira.
@@ -207,21 +207,21 @@ A repóban van egy Nix flake (`flake.nix`, `nix/package.nix`), ebből a NixOS na
 Futtatás telepítés nélkül (a repó privát, ezért SSH-n keresztül):
 
 ```bash
-nix run git+ssh://git@github.com/adamgyongyosi/kripto-ado   # privát repóból
-nix run github:adamgyongyosi/kripto-ado                   # ha a repó publikus
+nix run git+ssh://git@github.com/adamgyongyosi/kriptomerleg   # privát repóból
+nix run github:adamgyongyosi/kriptomerleg                   # ha a repó publikus
 ```
 
 Rendszerszintű telepítés flake-alapú NixOS konfigurációban:
 
 ```nix
 # flake.nix
-inputs.kripto-ado.url = "git+ssh://git@github.com/adamgyongyosi/kripto-ado";
+inputs.kriptomerleg.url = "git+ssh://git@github.com/adamgyongyosi/kriptomerleg";
 
 # configuration.nix (a modulnak átadott inputs-szal)
-environment.systemPackages = [ inputs.kripto-ado.packages.${pkgs.stdenv.hostPlatform.system}.default ];
+environment.systemPackages = [ inputs.kriptomerleg.packages.${pkgs.stdenv.hostPlatform.system}.default ];
 ```
 
-Fejlesztői környezet: `nix develop`, utána `npm install && npm run tauri dev`. A fájlválasztó megnyitása előtt az app Linuxon ellenőrzi, hogy a séma elérhető-e; ha nem, összeomlás helyett hibaüzenetet ad. A megerősítő és beviteli ablakok az appon belül jelennek meg, nem a rendszer (GTK) üzenetablakában. Az appot mindig a `nix develop` shellből indítsd: ez állítja be az `XDG_DATA_DIRS`-t a GTK fájlválasztó sémáira (`org.gtk.Settings.FileChooser`). Nélküle a CSV-export és az import fájlválasztója `Settings schema 'org.gtk.Settings.FileChooser' is not installed` hibával összeomlik ([#1](https://github.com/adamgyongyosi/kripto-ado/issues/1)). A `nix run` / `nix build` csomagban ezt a `wrapGAppsHook3` intézi (`gtk3` és `gsettings-desktop-schemas` a függőségek között); a CI mindkét esetet ellenőrzi.
+Fejlesztői környezet: `nix develop`, utána `npm install && npm run tauri dev`. A fájlválasztó megnyitása előtt az app Linuxon ellenőrzi, hogy a séma elérhető-e; ha nem, összeomlás helyett hibaüzenetet ad. A megerősítő és beviteli ablakok az appon belül jelennek meg, nem a rendszer (GTK) üzenetablakában. Az appot mindig a `nix develop` shellből indítsd: ez állítja be az `XDG_DATA_DIRS`-t a GTK fájlválasztó sémáira (`org.gtk.Settings.FileChooser`). Nélküle a CSV-export és az import fájlválasztója `Settings schema 'org.gtk.Settings.FileChooser' is not installed` hibával összeomlik ([#1](https://github.com/adamgyongyosi/kriptomerleg/issues/1)). A `nix run` / `nix build` csomagban ezt a `wrapGAppsHook3` intézi (`gtk3` és `gsettings-desktop-schemas` a függőségek között); a CI mindkét esetet ellenőrzi.
 
 Alternatíva: az AppImage NixOS-en `appimage-run`-nal indítható (`programs.appimage.enable = true;`).
 

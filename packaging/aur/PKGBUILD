@@ -7,13 +7,13 @@ pkgver=0.3.0
 pkgrel=1
 pkgdesc="Magyar kriptó-SZJA kalkulátor, helyben futó asztali app"
 arch=('x86_64')
-url="https://adamgyongyosi.github.io/kripto-ado/"
+url="https://adamgyongyosi.github.io/kriptomerleg/"
 # A repóban még nincs licencfájl; beküldés előtt ezt pótolni kell.
 license=('LicenseRef-Kriptomerleg')
 depends=('webkit2gtk-4.1' 'gtk3' 'hicolor-icon-theme')
 provides=('kriptomerleg')
 conflicts=('kriptomerleg')
-source=("kriptomerleg-${pkgver}.deb::https://github.com/adamgyongyosi/kripto-ado/releases/download/v${pkgver}/kriptomerleg_linux_amd64.deb")
+source=("kriptomerleg-${pkgver}.deb::https://github.com/adamgyongyosi/kriptomerleg/releases/download/v${pkgver}/kriptomerleg_linux_amd64.deb")
 sha256sums=('SKIP')
 
 package() {

@@ -61,7 +61,7 @@ rustPlatform.buildRustPackage (finalAttrs: {
 
   meta = {
     description = "Kriptomérleg – magyar kriptó-SZJA kalkulátor, helyben futó asztali app";
-    homepage = "https://github.com/adamgyongyosi/kripto-ado";
+    homepage = "https://github.com/adamgyongyosi/kriptomerleg";
     mainProgram = "kriptomerleg";
     platforms = lib.platforms.linux;
   };

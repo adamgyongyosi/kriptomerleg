@@ -22,7 +22,7 @@ modules:
     buildsystem: simple
     sources:
       - type: file
-        url: https://github.com/adamgyongyosi/kripto-ado/releases/download/v0.3.0/kriptomerleg_linux_amd64.deb
+        url: https://github.com/adamgyongyosi/kriptomerleg/releases/download/v0.3.0/kriptomerleg_linux_amd64.deb
         dest-filename: kriptomerleg.deb
         sha256: 0000000000000000000000000000000000000000000000000000000000000000
         only-arches: [x86_64]
