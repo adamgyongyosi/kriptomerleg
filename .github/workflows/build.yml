@@ -20,9 +20,9 @@ jobs:
             bundles: deb,appimage
             artifact: kriptomerleg-linux
     runs-on: ${{ matrix.os }}
-    # Az aláíró kulcs a „release” környezet titka: csak a main ágról és v* tagből induló
-    # buildek érik el (a környezet ág-/tagszabálya miatt). PR-buildnél nincs környezet és kulcs.
-    environment: ${{ github.event_name == 'push' && 'release' || '' }}
+    # Az aláíró kulcs a „release” környezet titka, amelyet csak a main ág használhat. Tag- és
+    # PR-buildnél nincs környezet és kulcs (ezek a kiadások nem frissíthetők automatikusan).
+    environment: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && 'release' || '' }}
     steps:
       - uses: actions/checkout@v4
 
