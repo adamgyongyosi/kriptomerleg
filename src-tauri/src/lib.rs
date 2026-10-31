@@ -49,6 +49,15 @@ struct TxInput {
     /// Ha üres, az MNB árfolyamot használjuk.
     rate: Option<f64>,
     note: Option<String>,
+    /// "payment": kriptóval fizetett áru vagy szolgáltatás (bevételnek számít, mint a kivétel).
+    #[serde(default)]
+    kind: Option<String>,
+}
+
+impl TxInput {
+    fn kind(&self) -> &'static str {
+        if self.amount < 0.0 && self.kind.as_deref() == Some("payment") { "payment" } else { manual_kind(self.amount) }
+    }
 }
 
 #[derive(Serialize)]
@@ -299,7 +308,7 @@ async fn add_transaction(state: State<'_, AppState>, input: TxInput) -> Result<T
     conn.execute(
         "INSERT INTO transactions (date, currency, amount, rate, rate_source, rate_date, huf, note, source, kind)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'kézi', ?9)",
-        params![date.to_string(), currency, input.amount, rate, source, rate_date, huf, input.note.as_deref().unwrap_or("").trim(), manual_kind(input.amount)],
+        params![date.to_string(), currency, input.amount, rate, source, rate_date, huf, input.note.as_deref().unwrap_or("").trim(), input.kind()],
     )
     .map_err(err)?;
     load_tx(&conn, conn.last_insert_rowid())
@@ -314,7 +323,7 @@ async fn update_transaction(state: State<'_, AppState>, id: i64, input: TxInput)
                 rate_date = ?6, huf = ?7, note = ?8,
                 kind = CASE WHEN kind IN ('buy', 'sell') THEN (CASE WHEN ?3 > 0 THEN 'buy' ELSE 'sell' END) ELSE ?10 END
          WHERE id = ?9",
-        params![date.to_string(), currency, input.amount, rate, source, rate_date, huf, input.note.as_deref().unwrap_or("").trim(), id, manual_kind(input.amount)],
+        params![date.to_string(), currency, input.amount, rate, source, rate_date, huf, input.note.as_deref().unwrap_or("").trim(), id, input.kind()],
     )
     .map_err(err)?;
     load_tx(&conn, id)
@@ -392,7 +401,7 @@ struct ImportPreview {
 #[tauri::command(async)]
 fn preview_import(state: State<'_, AppState>, path: String) -> Result<ImportPreview, String> {
     let parsed = import::parse_file(&path)?;
-    let rows = import::aggregate(parsed.source, &parsed.flows);
+    let mut rows = import::aggregate(parsed.source, &parsed.flows);
     if rows.is_empty() {
         return Err(format!(
             "A fájlban ({}) nem találtam fiat ↔ kripto ügyletet. {} sort hagytam ki (befizetés, kifizetés, kripto–kripto csere stb.).",
@@ -401,11 +410,12 @@ fn preview_import(state: State<'_, AppState>, path: String) -> Result<ImportPrev
     }
     let conn = state.db.lock().unwrap();
     let mut existing = 0;
-    for r in &rows {
+    for r in &mut rows {
         let found: bool = conn
             .query_row("SELECT EXISTS(SELECT 1 FROM transactions WHERE external_id = ?1)", [&r.key], |x| x.get(0))
             .map_err(err)?;
         existing += usize::from(found);
+        r.duplicate = find_duplicate(&conn, parsed.source, r)?;
     }
     let years: std::collections::BTreeSet<i32> = rows.iter().filter_map(|r| r.date[..4].parse().ok()).collect();
     let mut manual_in_years = Vec::new();
@@ -430,6 +440,23 @@ fn preview_import(state: State<'_, AppState>, path: String) -> Result<ImportPrev
         warnings: parsed.warnings,
         manual_in_years,
     })
+}
+
+/// Másik forrásból (kézi, Excel, másik tőzsde) származó, ugyanazon a napon azonos irányú és
+/// legfeljebb 1%-kal eltérő összegű tétel – valószínűleg ugyanaz az ügylet.
+fn find_duplicate(conn: &Connection, source: &str, r: &import::ImportRow) -> Result<Option<String>, String> {
+    let sign = if r.kind == "buy" { 1.0 } else { -1.0 };
+    conn.query_row(
+        "SELECT source, amount FROM transactions
+         WHERE date = ?1 AND currency = ?2 AND source <> ?3 AND amount * ?4 > 0
+           AND abs(abs(amount) - ?5) <= ?5 * 0.01
+         LIMIT 1",
+        params![r.date, r.currency, source, sign, r.amount],
+        |x| Ok((x.get::<_, String>(0)?, x.get::<_, f64>(1)?)),
+    )
+    .optional()
+    .map(|o| o.map(|(src, amount)| format!("{} tétel ugyanezen a napon: {} {}", capitalize(&src), hu_num(amount.abs(), 2), r.currency)))
+    .map_err(err)
 }
 
 /// A kiválasztott összevont tételek mentése MNB árfolyammal. A már meglévő kulcsú tételeket frissíti.
@@ -550,6 +577,7 @@ fn export_csv(state: State<'_, AppState>, path: String) -> Result<(), String> {
                 match t.kind.as_str() {
                     "buy" => "Vétel",
                     "sell" => "Eladás",
+                    "payment" => "Fizetés kriptóval",
                     _ if t.amount > 0.0 => "Befizetés",
                     _ => "Kivétel",
                 },
@@ -662,5 +690,46 @@ mod tests {
         let imported: Vec<Tx> = all_transactions(&conn, Some(2026)).unwrap().into_iter().filter(|t| t.source == "binance").collect();
         assert_eq!(imported.len(), 1);
         assert_eq!(imported[0].amount, 500.0);
+    }
+
+    #[test]
+    fn flags_same_day_entry_from_other_source() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO transactions (date, currency, amount, rate, rate_source, huf, source, kind)
+             VALUES ('2026-03-04', 'EUR', 500, 390, 'MNB', 195000, 'kézi', 'deposit')",
+            [],
+        )
+        .unwrap();
+        let row = |kind: &str, amount: f64| import::ImportRow {
+            key: String::new(),
+            date: "2026-03-04".into(),
+            currency: "EUR".into(),
+            kind: kind.into(),
+            amount,
+            fee: 0.0,
+            count: 1,
+            duplicate: None,
+        };
+        assert!(find_duplicate(&conn, "binance", &row("buy", 502.0)).unwrap().is_some());
+        assert!(find_duplicate(&conn, "binance", &row("buy", 600.0)).unwrap().is_none());
+        assert!(find_duplicate(&conn, "binance", &row("sell", 500.0)).unwrap().is_none());
+        assert!(find_duplicate(&conn, "kézi", &row("buy", 500.0)).unwrap().is_none());
+    }
+
+    #[test]
+    fn crypto_payment_is_income() {
+        let input = |amount: f64, kind: Option<&str>| TxInput {
+            date: "2026-01-01".into(),
+            currency: "EUR".into(),
+            amount,
+            rate: None,
+            note: None,
+            kind: kind.map(str::to_string),
+        };
+        assert_eq!(input(-20.0, Some("payment")).kind(), "payment");
+        assert_eq!(input(20.0, Some("payment")).kind(), "deposit");
+        assert_eq!(input(-20.0, None).kind(), "withdrawal");
     }
 }

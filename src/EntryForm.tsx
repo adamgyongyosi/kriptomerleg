@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { api, Currency, fmtDate, fmtFt, fmtRate, fmtTax, formatAmountInput, parseAmount, RateInfo, today, Tx, YearSummary } from "./api";
+import { api, Currency, FORM_CURRENCIES, fmtDate, fmtFt, fmtRate, fmtTax, formatAmountInput, parseAmount, RateInfo, today, Tx, YearSummary } from "./api";
 import { IconArrow } from "./Icons";
 
-type Kind = "in" | "out";
+/** in: befizetés, out: kivétel, pay: kriptóval fizetett áru/szolgáltatás (bevételnek számít). */
+type Kind = "in" | "out" | "pay";
+const OTHER_CURRENCIES = FORM_CURRENCIES.filter(([code]) => code !== "EUR" && code !== "HUF");
 
 interface Props {
   /** Szerkesztett tétel; üres = új tétel. */
@@ -16,7 +18,9 @@ interface Props {
 }
 
 export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete }: Props) {
-  const [kind, setKind] = useState<Kind>(editing && editing.amount < 0 ? "out" : "in");
+  const [kind, setKind] = useState<Kind>(
+    editing?.kind === "payment" ? "pay" : editing && editing.amount < 0 ? "out" : "in",
+  );
   const [amountText, setAmountText] = useState(editing ? formatAmountInput(String(Math.abs(editing.amount))) : "");
   const [currency, setCurrency] = useState<Currency>(editing?.currency ?? "EUR");
   const [date, setDate] = useState(editing?.date ?? today());
@@ -32,7 +36,7 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
   const caretRef = useRef<number | null>(null);
 
   const abs = parseAmount(amountText);
-  const amount = abs === null ? null : kind === "out" ? -Math.abs(abs) : Math.abs(abs);
+  const amount = abs === null ? null : kind === "in" ? Math.abs(abs) : -Math.abs(abs);
   const manual = manualRate.trim() ? parseAmount(manualRate) : null;
   const rate = currency === "HUF" ? 1 : editRate && manual ? manual : (mnb.info?.rate ?? null);
   const huf = amount !== null && rate !== null ? Math.round(amount * rate) : null;
@@ -41,14 +45,14 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
 
   // MNB árfolyam a kiválasztott napra.
   useEffect(() => {
-    if (currency !== "EUR" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (currency === "HUF" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       setMnb({});
       return;
     }
     let cancelled = false;
     setMnb((m) => ({ ...m, loading: true, error: undefined }));
     api
-      .getMnbRate(date)
+      .getMnbRate(date, currency)
       .then((info) => !cancelled && setMnb({ info }))
       .catch((e) => {
         if (cancelled) return;
@@ -79,7 +83,7 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
     let v = input.value;
     // A mínusz előjel kivételt jelent.
     if (/^\s*-/.test(v)) {
-      setKind("out");
+      if (kind === "in") setKind("out");
       v = v.replace("-", "");
     }
     // A kurzor a formázás után is ugyanannyi számjegy után maradjon.
@@ -116,8 +120,9 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
         date,
         currency,
         amount,
-        rate: currency === "EUR" && editRate ? manual : null,
+        rate: currency !== "HUF" && editRate ? manual : null,
         note,
+        kind: kind === "pay" ? ("payment" as const) : undefined,
       };
       const saved = editing ? await api.updateTransaction(editing.id, input) : await api.addTransaction(input);
       onSaved(saved);
@@ -152,10 +157,21 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
           Kivétel
           <small>vissza a bankba</small>
         </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={kind === "pay"}
+          className={kind === "pay" ? "on out" : ""}
+          onClick={() => setKind("pay")}
+          title="Kriptóval fizettél árut vagy szolgáltatást (pl. ajándékkártya, utazás)"
+        >
+          Fizetés
+          <small>kriptóval</small>
+        </button>
       </div>
 
       <div className="amount-field">
-        <span className="label">Összeg</span>
+        <span className="label">{kind === "pay" ? "Az áru vagy szolgáltatás értéke" : "Összeg"}</span>
         <div className="amount-box" onClick={() => amountRef.current?.focus()}>
           <input
             ref={amountRef}
@@ -167,12 +183,7 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
             aria-label="Összeg"
           />
           <div className="ccy-toggle" role="radiogroup" aria-label="Deviza" onClick={(e) => e.stopPropagation()}>
-            {(
-              [
-                ["EUR", "€", "EUR"],
-                ["HUF", "Ft", "Forint"],
-              ] as const
-            ).map(([code, symbol, title]) => (
+            {FORM_CURRENCIES.filter(([code]) => code === "EUR" || code === "HUF").map(([code, symbol, title]) => (
               <button
                 key={code}
                 type="button"
@@ -191,6 +202,26 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
                 {symbol}
               </button>
             ))}
+            <select
+              className={`ccy-more ${OTHER_CURRENCIES.some(([c]) => c === currency) ? "on" : ""}`}
+              value={OTHER_CURRENCIES.some(([c]) => c === currency) ? currency : ""}
+              title="Más deviza (MNB árfolyamon)"
+              aria-label="Más deviza"
+              onChange={(e) => {
+                if (!e.target.value) return;
+                setCurrency(e.target.value);
+                setEditRate(false);
+                setManualRate("");
+                amountRef.current?.focus();
+              }}
+            >
+              <option value="">…</option>
+              {OTHER_CURRENCIES.map(([code, symbol, title]) => (
+                <option key={code} value={code} title={title}>
+                  {symbol}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -200,7 +231,7 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
           <span className="label">Dátum</span>
           <input type="date" value={date} max="2100-12-31" onChange={(e) => setDate(e.target.value)} required />
         </label>
-        {currency === "EUR" && (
+        {currency !== "HUF" && (
           <div className="field">
             <span className="label">Árfolyam</span>
             {editRate ? (
@@ -244,7 +275,7 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
           </div>
         )}
       </div>
-      {mnb.error && currency === "EUR" && (
+      {mnb.error && currency !== "HUF" && (
         <p className="hint warn">Az MNB most nem érhető el – írd be az árfolyamot kézzel (pl. a banki bizonylatról).</p>
       )}
       {!mnb.error && mnb.info && mnb.info.rateDate !== date && !editRate && (
@@ -269,8 +300,13 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
             <strong>{fmtTax(beforeTax)}</strong>
           )}
         </div>
-        {preview && kind === "out" && delta === 0 && (
-          <p className="hint good">Ez a kivétel még nem keletkeztet adót.</p>
+        {preview && kind !== "in" && delta === 0 && (
+          <p className="hint good">Ez {kind === "pay" ? "a fizetés" : "a kivétel"} még nem keletkeztet adót.</p>
+        )}
+        {kind === "pay" && (
+          <p className="hint">
+            Ha kriptóval fizetsz árut vagy szolgáltatást, annak forintértéke bevételnek számít, ugyanúgy, mint egy kivétel.
+          </p>
         )}
       </div>
 
@@ -293,8 +329,8 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
             Mégse
           </button>
         )}
-        <button className={`btn primary ${kind}`} type="submit" disabled={!valid || busy}>
-          {editing ? "Mentés" : kind === "in" ? "Befizetés rögzítése" : "Kivétel rögzítése"}
+        <button className={`btn primary ${kind === "in" ? "in" : "out"}`} type="submit" disabled={!valid || busy}>
+          {editing ? "Mentés" : kind === "in" ? "Befizetés rögzítése" : kind === "out" ? "Kivétel rögzítése" : "Fizetés rögzítése"}
         </button>
       </div>
     </form>

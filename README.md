@@ -6,12 +6,14 @@
 
 Weboldal: <https://adamgyongyosi.github.io/kripto-ado/> (a `site/` mappából, lásd [Weboldal](#weboldal)).
 
-- Gyors rögzítés: Befizetés / Kivétel kapcsoló, € / Ft váltó (alapértelmezés: EUR, minden mentés után visszaáll), és élőben látszik, mennyivel változik az évi adó. Mínusz jellel beírt összeg automatikusan kivétel. Az összeg mező gépelés közben ezres tagolást kap (`899 100`); `1.000.000` és `1.000,50` alakban beillesztve is jól értelmezi.
-- EUR tételeknél az MNB hivatalos árfolyamát automatikusan lekéri a teljesítés napjára (hétvégén/ünnepnap az utolsó közzétettet); kattintásra kézi (pl. banki) árfolyam is megadható. Forintos tétel is rögzíthető.
+- Gyors rögzítés: Befizetés / Kivétel / Fizetés kriptóval kapcsoló, € / Ft váltó és a „…” menüben USD, GBP, CHF (alapértelmezés: EUR, minden mentés után visszaáll), és élőben látszik, mennyivel változik az évi adó. Mínusz jellel beírt összeg automatikusan kivétel. Az összeg mező gépelés közben ezres tagolást kap (`899 100`); `1.000.000` és `1.000,50` alakban beillesztve is jól értelmezi.
+- Devizás (EUR, USD, GBP, CHF) tételeknél az MNB hivatalos árfolyamát automatikusan lekéri a teljesítés napjára (hétvégén/ünnepnap az utolsó közzétettet); kattintásra kézi (pl. banki) árfolyam is megadható. Forintos tétel is rögzíthető.
 - Éves eredmény = kivételek − befizetések; nyereség után 15% SZJA.
+- **Fizetés kriptóval:** ha kriptóval fizetsz árut vagy szolgáltatást (ajándékkártya, utazás), annak forintértéke bevételnek számít, mint egy kivétel. Külön tételtípus („Fizetés kriptóval”), a CSV-exportban is.
+- **Adómentesen még kivehető:** az Áttekintésen látszik, mekkora kivételig (vagy kriptós fizetésig) nem keletkezik adó az évben, a folyó évben euróban is, a mai MNB árfolyamon.
 - Adókiegyenlítés: a veszteség 15%-a levonható, legfeljebb a tárgyévi és az előző két évi kriptoadó erejéig; a 2025-ös bevallástól a veszteség nem évül el (2025. évi LXXXIII. tv.). Korábbi év vesztesége csak akkor, ha azt annak az évnek a bevallásában feltüntették – ezt évenként jelölni kell (lásd [Az adószámítás szabályai](#az-adószámítás-szabályai)).
 - Bevallási segéd: mit kell a 25SZJA 164. sorába és a 06-os lap 202–209. sorába írni (NAV kitöltési útmutató alapján).
-- **Tőzsdei import:** Binance, Revolut, Kraken és Bybit export (CSV/Excel) beolvasása – a fiat ↔ kripto ügyletek díjakkal együtt, naponta összevonva, MNB árfolyamon.
+- **Tőzsdei import:** Binance, Revolut, Kraken és Bybit export (CSV/Excel) beolvasása – a fiat ↔ kripto ügyletek díjakkal együtt, naponta összevonva, MNB árfolyamon. Ugyanaz a fájl újra importálva frissít, nem duplikál; ha egy nap már szerepel más forrásból (azonos nap, irány, legfeljebb 1% eltérés), az előnézet „lehet dupla” jelölést ad, és alapból kihagyja.
 - Régi Excel import (évszám nevű lapok, A: dátum, B: forint), CSV export.
 - Adatok helyben, SQLite-ban.
 
@@ -101,7 +103,7 @@ Ugyanebben a mappában a beépített böngészőmotor (WebView) gyorsítótára 
 | `huf` | INTEGER | forintösszeg (`amount × rate`, egészre kerekítve) – az adószámítás ebből dolgozik |
 | `note` | TEXT | megjegyzés (importnál pl. „Binance · 3 vétel · díj 1,20 EUR”) |
 | `source` | TEXT | `kézi`, `excel`, `binance`, `revolut`, `kraken`, `bybit` |
-| `kind` | TEXT | `deposit` / `withdrawal` (kézi), `buy` / `sell` (tőzsdei import) |
+| `kind` | TEXT | `deposit` / `withdrawal` / `payment` (kézi; `payment` = kriptóval fizetett áru, szolgáltatás), `buy` / `sell` (tőzsdei import) |
 | `fee` | REAL | ebből díj a tétel devizájában (tájékoztató) |
 | `external_id` | TEXT | importált napi tétel kulcsa (pl. `binance:2026-03-04:EUR:buy`), ez akadályozza meg a duplikálást |
 | `created_at` | TEXT | rögzítés ideje |

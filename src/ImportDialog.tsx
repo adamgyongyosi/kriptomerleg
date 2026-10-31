@@ -35,7 +35,8 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
     try {
       const p = await api.previewImport(path);
       setPreview(p);
-      setSelected(new Set(p.rows.map((r) => r.key)));
+      // A valószínűleg már rögzített (dupla) tételek alapból ki vannak hagyva.
+      setSelected(new Set(p.rows.filter((r) => !r.duplicate).map((r) => r.key)));
     } catch (e) {
       setError(String(e));
       setPreview(null);
@@ -98,7 +99,8 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
             <p className="muted">
               Az app a <strong>fiat ↔ kripto ügyleteket</strong> veszi át (vétel euróért, eladás euróra, díjakkal együtt),
               naponta összevonva, az aznapi MNB árfolyammal. A tőzsdére utalás és a kripto–kripto csere (pl. USDT) nem
-              adóköteles, ezeket kihagyja. Újraimportáláskor nem duplikál, hanem frissít.
+              adóköteles, ezeket kihagyja. Újraimportáláskor nem duplikál, hanem frissít; ha egy nap már szerepel más
+              forrásból (pl. kézzel rögzítve), jelzi és alapból kihagyja.
             </p>
             <button className="btn primary big" onClick={choose} disabled={busy}>
               <IconUpload /> {busy ? "Beolvasás…" : "Export fájl kiválasztása (CSV / Excel)"}
@@ -130,6 +132,15 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
               </span>
             </div>
 
+            {preview.rows.some((r) => r.duplicate) && (
+              <div className="notice warn">
+                <IconAlert />
+                <span>
+                  {preview.rows.filter((r) => r.duplicate).length} napi tétel valószínűleg már szerepel más forrásból (azonos
+                  nap, irány és összeg). Ezeket alapból kihagytam; ha mégis kellenek, jelöld be őket.
+                </span>
+              </div>
+            )}
             {preview.manualInYears.length > 0 && (
               <div className="notice warn">
                 <IconAlert />
@@ -199,6 +210,11 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
                       <td>{fmtDate(r.date)}</td>
                       <td>
                         <span className={`chip ${r.kind === "buy" ? "in" : "out"}`}>{r.kind === "buy" ? "Vétel" : "Eladás"}</span>
+                        {r.duplicate && (
+                          <span className="chip dup" title={r.duplicate}>
+                            lehet dupla
+                          </span>
+                        )}
                       </td>
                       <td className="num strong">
                         {amountFmt(r.amount)} {r.currency}

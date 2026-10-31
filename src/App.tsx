@@ -256,6 +256,15 @@ function Overview(props: {
   onDeclare: (year: number, declared: boolean) => void;
 }) {
   const { year, current: c, txs } = props;
+  // Az adómentes keret euróban is (a mai MNB árfolyamon), mert a kivételt jellemzően euróban indítják.
+  const [eurRate, setEurRate] = useState<number | null>(null);
+  useEffect(() => {
+    if (!inDesktopApp()) return;
+    api
+      .getMnbRate(today(), "EUR")
+      .then((r) => setEurRate(r.rate))
+      .catch(() => setEurRate(null));
+  }, []);
   // Korábbi veszteséges évek: csak a bevallott veszteség csökkenti az idei adót.
   const priorLosses = props.years.filter((y) => y.year < year && y.lossCredit > 0);
 
@@ -322,7 +331,10 @@ function Overview(props: {
           <div className="hero-side">
             <span className="hero-label">Adómentesen még kivehető</span>
             <strong className="hero-side-value">{fmtFt(c.taxFreeHeadroom)}</strong>
-            <span className="muted small">ennyi kivételig nem keletkezik adó {year}-ben</span>
+            {eurRate && c.taxFreeHeadroom > 0 && year === CURRENT_YEAR && (
+              <span className="hero-side-sub">≈ {Math.floor(c.taxFreeHeadroom / eurRate).toLocaleString("hu-HU")} € a mai MNB árfolyamon</span>
+            )}
+            <span className="muted small">ennyi kivételig (vagy kriptós fizetésig) nem keletkezik adó {year}-ben</span>
           </div>
         </section>
 
@@ -709,8 +721,12 @@ function Years(props: {
             eladások a NAV szerint a 2022-es eredménybe számítanak.
           </li>
           <li>
-            <strong>EUR</strong> tételeknél a teljesítés napján érvényes MNB árfolyam számít; hétvégén és ünnepnap az utolsó
-            közzétett.
+            <strong>EUR, USD, GBP, CHF</strong> tételeknél a teljesítés napján érvényes MNB árfolyam számít; hétvégén és
+            ünnepnap az utolsó közzétett.
+          </li>
+          <li>
+            <strong>Kriptóval fizetés</strong> (áru, szolgáltatás) bevételnek számít, mint egy kivétel: a forintértéke az éves
+            eredményt növeli.
           </li>
         </ul>
         <p className="muted small">Tájékoztató számítás, nem adótanácsadás.</p>

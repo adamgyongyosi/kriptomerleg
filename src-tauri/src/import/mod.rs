@@ -57,6 +57,9 @@ pub struct ImportRow {
     pub fee: f64,
     /// Hány ügyletből áll össze.
     pub count: usize,
+    /// Ha egy másik forrásból (pl. kézzel) már van hasonló tétel ugyanazon a napon, annak leírása.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duplicate: Option<String>,
 }
 
 pub fn parse_file(path: &str) -> Result<Parsed, String> {
@@ -111,6 +114,7 @@ pub fn aggregate(source: &str, flows: &[FiatFlow]) -> Vec<ImportRow> {
             amount: round2(amount.abs()),
             fee: round2(fee),
             count,
+            duplicate: None,
         })
         .filter(|r| r.amount > 0.0)
         .collect()

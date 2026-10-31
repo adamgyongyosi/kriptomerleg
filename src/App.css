@@ -451,6 +451,10 @@ button {
 .hero.bad .hero-status svg {
   color: var(--bad);
 }
+.hero-side-sub {
+  font-weight: 600;
+  color: var(--ink-2);
+}
 .hero-side-value {
   font-size: 26px;
   font-weight: 600;
@@ -576,7 +580,7 @@ button {
 }
 .kind-toggle {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 6px;
   padding: 4px;
   background: var(--surface-2);
@@ -659,6 +663,27 @@ button {
   font-weight: 650;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.ccy-more {
+  height: 32px;
+  min-width: 44px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.ccy-more.on {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow), 0 0 0 1px var(--border);
+}
+.chip.dup {
+  background: var(--warn-bg);
+  color: var(--warn);
 }
 .ccy-toggle button:hover:not(.on) {
   color: var(--ink);

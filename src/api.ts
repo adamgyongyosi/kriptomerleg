@@ -12,7 +12,17 @@ function invoke<T>(cmd: string, args?: InvokeArgs): Promise<T> {
   return tauriInvoke<T>(cmd, args);
 }
 
-export type Currency = "EUR" | "HUF";
+/** ISO devizakód; a rögzítő űrlapon EUR, USD, GBP, CHF vagy HUF, importból bármely MNB-deviza. */
+export type Currency = string;
+
+/** A gyors rögzítés devizái: [kód, jel, név]. */
+export const FORM_CURRENCIES = [
+  ["EUR", "€", "Euró"],
+  ["USD", "$", "Amerikai dollár"],
+  ["GBP", "£", "Angol font"],
+  ["CHF", "CHF", "Svájci frank"],
+  ["HUF", "Ft", "Forint"],
+] as const;
 
 export interface Tx {
   id: number;
@@ -27,7 +37,7 @@ export interface Tx {
   note: string;
   /** "kézi", "excel", "binance", "kraken", "revolut", "bybit" */
   source: string;
-  /** "deposit" | "withdrawal" | "buy" | "sell" */
+  /** "deposit" | "withdrawal" | "payment" | "buy" | "sell" */
   kind: string;
   fee: number;
 }
@@ -40,6 +50,8 @@ export interface ImportRow {
   amount: number;
   fee: number;
   count: number;
+  /** Másik forrásból már van hasonló tétel ugyanazon a napon. */
+  duplicate?: string;
 }
 
 export interface ImportPreview {
@@ -59,6 +71,8 @@ export interface TxInput {
   /** null: MNB árfolyam a dátum napján. */
   rate: number | null;
   note: string;
+  /** "payment": kriptóval fizetett áru/szolgáltatás (bevétel). */
+  kind?: "payment";
 }
 
 export interface RateInfo {
@@ -128,6 +142,8 @@ export function kindLabel(t: { kind: string; amount: number }): string {
       return "Vétel";
     case "sell":
       return "Eladás";
+    case "payment":
+      return "Fizetés kriptóval";
     default:
       return t.amount > 0 ? "Befizetés" : "Kivétel";
   }
