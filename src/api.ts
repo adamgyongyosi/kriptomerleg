@@ -155,6 +155,12 @@ export const api = {
   deleteProfile: (id: string) => invoke<Profiles>("delete_profile", { id }),
 };
 
+/** Elérhető frissítés (az automatikus frissítő találta). */
+export interface UpdateInfo {
+  version: string;
+  notes?: string;
+}
+
 export interface BackupFile {
   path: string;
   name: string;

@@ -20,6 +20,7 @@ Weboldal: <https://adamgyongyosi.github.io/kripto-ado/> (a `site/` mappából, l
 - **Határidő-emlékeztető:** március 15. (eSZJA tervezet) és május 20. között az app jelzi az előző évi kriptoadót, adókiegyenlítést vagy bevallandó veszteséget; szakaszonként egyszer rendszerértesítést is küld (kikapcsolható).
 - **Adatok és mentés** oldal: Excel (.xlsx) és CSV export, mentés fájlba (opcionálisan jelszóval titkosítva), visszaállítás, heti automatikus mentés, profilok.
 - **Több profil:** külön nyilvántartás pl. házastársnak, családtagnak; profilváltó a bal oldali sávban.
+- **Automatikus frissítés:** induláskor megnézi, van-e újabb kiadás, és felajánlja a letöltést és az újraindítást (Windows, AppImage). Kikapcsolható az *Adatok és mentés* oldalon.
 - Régi Excel import (évszám nevű lapok, A: dátum, B: forint).
 - Adatok helyben, SQLite-ban.
 
@@ -158,12 +159,37 @@ Tesztek:
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
+```bash
+npm test
+```
+
+A `npm test` a felület-teszteket futtatja (Vitest + Testing Library, jsdom): összegformázás, határidő-emlékeztető, a rögzítő űrlap (deviza, kriptós fizetés, MNB árfolyam), appon belüli párbeszédablak. A Tauri hívásokat a `@tauri-apps/api/mocks` helyettesíti, így asztali app nélkül is futnak. A CI mindkettőt lefuttatja.
+
 ## Build
 
 - Windows + Linux egyszerre (Windowson, a Linux rész WSL-ben): `powershell -ExecutionPolicy Bypass -File scripts\build-all.ps1`
 - Csak Linux: `bash scripts/build-linux.sh`
 - GitHub Actions (`.github/workflows/build.yml`): minden pushnál Windows (NSIS + hordozható exe) és Linux (.deb, AppImage) build és Rust tesztek, `nix build` ellenőrzés, majd `main`-re pusholáskor automatikus GitHub Release a fájlokkal.
-- Verzió emelése: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json` és `nix/package.nix` `version` mezője; kiadás taggel: `git tag v0.2.0 && git push --tags`.
+- Verzió emelése: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `nix/package.nix`, valamint a `packaging/` fájljaiban; kiadás taggel: `git tag v0.3.0 && git push --tags`. Az automatikus frissítő csak akkor ajánl frissítést, ha a verziószám nő.
+
+### Automatikus frissítés (updater)
+
+- Az app a `https://github.com/adamgyongyosi/kripto-ado/releases/latest/download/latest.json` fájlból tudja meg a legújabb verziót; a csomagokat a `tauri.conf.json`-ban lévő nyilvános kulccsal ellenőrzi.
+- Az aláíráshoz a CI-nek két titok kell (*Settings → Secrets and variables → Actions*): `TAURI_SIGNING_PRIVATE_KEY` (a privát kulcsfájl tartalma) és `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (üres, ha a kulcsnak nincs jelszava). Ha nincsenek beállítva, a build ugyanúgy elkészül, csak `latest.json` és `.sig` fájlok nélkül.
+- Új kulcspár: `npx tauri signer generate -w ~/.tauri/kriptomerleg-updater.key`, majd a `.pub` tartalma a `tauri.conf.json` `plugins.updater.pubkey` mezőjébe. A privát kulcs ne kerüljön a repóba.
+- A frissítés csak publikus repóból működik (privát repó kiadásai bejelentkezés nélkül nem tölthetők le); ugyanez igaz a weboldal letöltőgombjaira.
+
+### Linux csomagtárak
+
+A `packaging/` mappában előkészített, még be nem küldött csomagleírások:
+
+| Fájl | Hová | Teendő beküldés előtt |
+|---|---|---|
+| `packaging/aur/PKGBUILD` | AUR (`kriptomerleg-bin`, a release .deb fájljából) | publikus repó, `v<verzió>` tag, licenc, `updpkgsums` |
+| `packaging/flatpak/hu.kriptoado.app.yml` + `.metainfo.xml` | Flathub | publikus repó, `sha256` kitöltése, licenc, próba `flatpak-builder`-rel |
+| `nix/package.nix` | nixpkgs | a flake már működik; nixpkgs PR-hez publikus forrás és `fetchFromGitHub` kell |
+
+Flatpakban az adatmappa `~/.var/app/hu.kriptoado.app/data/hu.kriptoado.app/`, és a fájlválasztó miatt a saját mappához hozzáférést kér (`--filesystem=home`).
 
 A kimenetek a `telepito/windows` és `telepito/linux` mappába kerülnek (`kriptomerleg_<verzió>_…` néven).
 
@@ -206,16 +232,22 @@ A landing oldal a `site/` mappában van: egyetlen statikus `index.html` (külső
 - Közzététel: a `.github/workflows/pages.yml` minden `site/` változásnál feltölti a GitHub Pages-re.
 - **Egyszeri beállítás:** Settings → Pages → Source: *GitHub Actions*. Ingyenes GitHub-fiókkal a Pages (és a mindenki által letölthető release) csak **publikus** repóból működik.
 - A repó neve egy helyen szerepel a lap alján lévő szkriptben (`REPO`), átnevezésnél csak ezt kell módosítani.
+- A funkciólista (9 kártya), az adatvédelmi sáv, az összevetés és a GYIK az app funkcióit követi; új funkciónál ezeket is frissítsd.
 
 Arculat (logó, színek, hangnem): [`brand/README.md`](brand/README.md).
 
 ## Felépítés
 
-- `src-tauri/src/tax.rs` – adószámítás és adókiegyenlítés (unit tesztekkel)
+- `src-tauri/src/tax.rs` – adószámítás, adókiegyenlítés, kisértékű ügylet, minimálbér-tábla (unit tesztekkel)
 - `src-tauri/src/mnb.rs` – MNB SOAP árfolyam-lekérés
 - `src-tauri/src/excel.rs` – régi Excel import
-- `src-tauri/src/import/` – tőzsdei import: közös CSV/Excel olvasó, szám- és dátumértelmezés (`mod.rs`), formátumonként `binance.rs`, `revolut.rs`, `kraken.rs`, `bybit.rs` (mintafájlos tesztekkel)
-- `src-tauri/src/lib.rs` – SQLite tárolás, Tauri parancsok, CSV export
+- `src-tauri/src/import/` – tőzsdei import: közös CSV/Excel olvasó, szám- és dátumértelmezés (`mod.rs`), formátumonként `binance.rs`, `revolut.rs`, `kraken.rs`, `bybit.rs`, `bank.rs` (banki kivonat), `kraken_api.rs` (Kraken API, aláírással) – mintafájlos tesztekkel
+- `src-tauri/src/lib.rs` – SQLite tárolás, Tauri parancsok, CSV export, önellenőrzés-segéd
+- `src-tauri/src/data.rs` – Excel és PDF export, beállítások, mentés/visszaállítás, profilok, fájlválasztó-ellenőrzés
+- `src-tauri/src/backup.rs` – mentésfájl írása/olvasása, titkosítás, heti automatikus mentés
+- `src-tauri/src/pdf.rs` – éves nyilvántartás PDF-ben
+- `src/` – React felület: `App.tsx` (oldalak), `EntryForm.tsx`, `Filing.tsx` (bevallási segéd), `DataPage.tsx` (adatok és mentés), `ImportDialog.tsx`, `Dialogs.tsx` (appon belüli párbeszédablakok), `updates.ts` (frissítő); tesztek: `*.test.ts(x)`
+- `packaging/` – AUR és Flatpak csomagleírás
 - `brand/` – logó és arculati leírás
 - `site/` – landing oldal (GitHub Pages)
 - `src/` – React felület (`App.tsx`, `EntryForm.tsx`, `ImportDialog.tsx`, `Filing.tsx`, `Chart.tsx`)

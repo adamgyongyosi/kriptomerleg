@@ -1,0 +1,40 @@
+# Flatpak (Flathub) manifest a GitHub Release .deb fájljából.
+# Helyi próba: flatpak-builder --user --install --force-clean build packaging/flatpak/hu.kriptoado.app.yml
+# Beküldés előtt: publikus repó, v<verzió> tagos kiadás, és a sha256 kitöltése (sha256sum kriptomerleg_linux_amd64.deb).
+id: hu.kriptoado.app
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: kriptomerleg
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # MNB árfolyam, frissítéskeresés, Kraken API
+  - --share=network
+  # Rendszerértesítés (határidő-emlékeztető)
+  - --talk-name=org.freedesktop.Notifications
+  # Import/export: a GTK fájlválasztó a sandboxon belül fut, ezért a saját mappa kell hozzá
+  - --filesystem=home
+modules:
+  - name: kriptomerleg
+    buildsystem: simple
+    sources:
+      - type: file
+        url: https://github.com/adamgyongyosi/kripto-ado/releases/download/v0.3.0/kriptomerleg_linux_amd64.deb
+        dest-filename: kriptomerleg.deb
+        sha256: 0000000000000000000000000000000000000000000000000000000000000000
+        only-arches: [x86_64]
+      - type: file
+        path: hu.kriptoado.app.metainfo.xml
+    build-commands:
+      - ar -x kriptomerleg.deb
+      - tar -xf data.tar.*
+      - install -Dm755 usr/bin/kriptomerleg /app/bin/kriptomerleg
+      - install -Dm644 usr/share/applications/kriptomerleg.desktop /app/share/applications/hu.kriptoado.app.desktop
+      - desktop-file-edit --set-icon=hu.kriptoado.app /app/share/applications/hu.kriptoado.app.desktop
+      - install -Dm644 usr/share/icons/hicolor/32x32/apps/kriptomerleg.png /app/share/icons/hicolor/32x32/apps/hu.kriptoado.app.png
+      - install -Dm644 usr/share/icons/hicolor/128x128/apps/kriptomerleg.png /app/share/icons/hicolor/128x128/apps/hu.kriptoado.app.png
+      - install -Dm644 usr/share/icons/hicolor/256x256@2/apps/kriptomerleg.png /app/share/icons/hicolor/256x256/apps/hu.kriptoado.app.png
+      - install -Dm644 hu.kriptoado.app.metainfo.xml /app/share/metainfo/hu.kriptoado.app.metainfo.xml

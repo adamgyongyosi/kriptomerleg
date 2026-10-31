@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDialogs } from "./Dialogs";
+import { getVersion } from "@tauri-apps/api/app";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import type { Update } from "@tauri-apps/plugin-updater";
+import { findUpdate, RELEASES_URL } from "./updates";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { api, BackupFile, fmtDate, pickOpen, pickSave, Profiles, today } from "./api";
 import { IconDownload, IconUpload } from "./Icons";
@@ -14,12 +18,14 @@ interface Props {
   onProfiles: (p: Profiles) => void;
   onSetting: (key: string, value: string) => void;
   notify: (text: string, error?: boolean) => void;
+  /** Talált frissítés átadása (a fejlécben jelenik meg). */
+  onUpdate: (u: Update | null) => void;
 }
 
 const kb = (n: number) => `${Math.max(1, Math.round(n / 1024)).toLocaleString("hu-HU")} KB`;
 
 /** Adatok: export, mentés és visszaállítás, profilok, emlékeztetők. */
-export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSetting, notify }: Props) {
+export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSetting, notify, onUpdate }: Props) {
   const [backups, setBackups] = useState<BackupFile[]>([]);
   const [password, setPassword] = useState("");
   const [restorePassword, setRestorePassword] = useState("");
@@ -27,6 +33,10 @@ export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSe
   const [newProfile, setNewProfile] = useState("");
   const [busy, setBusy] = useState(false);
   const dialogs = useDialogs();
+  const [version, setVersion] = useState("");
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => setVersion(""));
+  }, []);
 
   const loadBackups = useCallback(() => {
     api.backupList().then(setBackups).catch(() => setBackups([]));
@@ -274,6 +284,43 @@ export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSe
             Profil létrehozása
           </button>
         </form>
+      </section>
+
+      <section className="panel">
+        <h2>Frissítések</h2>
+        <p className="muted">
+          Telepített verzió: <strong>{version || "–"}</strong>. Az app induláskor megnézi, van-e újabb kiadás; ha van, a
+          fejlécben felajánlja a letöltést és az újraindítást. Windowson és AppImage-nél automatikus, .deb csomagnál és NixOS-en
+          a csomagkezelővel frissíts.
+        </p>
+        <label className="toggle-row">
+          <input
+            id="auto-update"
+            type="checkbox"
+            className="declare"
+            checked={settings.frissites !== "off"}
+            onChange={(e) => onSetting("frissites", e.target.checked ? "on" : "off")}
+          />
+          <span>Frissítés keresése induláskor</span>
+        </label>
+        <div className="button-row">
+          <button
+            className="btn"
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                const u = await findUpdate(false);
+                if (u) onUpdate(u);
+                else notify("A legfrissebb verziót használod.");
+              })
+            }
+          >
+            Frissítés keresése most
+          </button>
+          <button className="link" onClick={() => openUrl(RELEASES_URL)}>
+            Kiadások oldala ↗
+          </button>
+        </div>
       </section>
 
       <section className="panel">

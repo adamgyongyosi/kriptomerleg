@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>hu.kriptoado.app</id>
+  <name>Kriptomérleg</name>
+  <summary>Magyar kriptó-SZJA kalkulátor, helyben futó asztali app</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <!-- A repóban még nincs licencfájl; Flathub-beküldés előtt pótolni kell. -->
+  <project_license>LicenseRef-proprietary</project_license>
+  <description>
+    <p>
+      Kriptóba befizetett és onnan kivett összegek nyilvántartása, MNB árfolyamon számolt 15% SZJA,
+      adókiegyenlítés, tőzsdei és banki import, bevallási segéd és éves nyilvántartás PDF-ben.
+      Fiók és felhő nélkül: minden adat a saját gépeden marad.
+    </p>
+  </description>
+  <launchable type="desktop-id">hu.kriptoado.app.desktop</launchable>
+  <url type="homepage">https://adamgyongyosi.github.io/kripto-ado/</url>
+  <categories>
+    <category>Office</category>
+    <category>Finance</category>
+  </categories>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.3.0" date="2026-10-31" />
+  </releases>
+</component>

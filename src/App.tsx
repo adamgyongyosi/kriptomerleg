@@ -7,7 +7,9 @@ import { ImportDialog } from "./ImportDialog";
 import { GroupedColumns } from "./Chart";
 import { EntryForm } from "./EntryForm";
 import { DataPage } from "./DataPage";
-import { IconAlert, IconBell, IconChart, IconCheck, IconData, IconDoc, IconHome, IconList, IconLogo, IconTrash, IconUpload } from "./Icons";
+import { findUpdate, installUpdate } from "./updates";
+import type { Update } from "@tauri-apps/plugin-updater";
+import { IconAlert, IconBell, IconChart, IconCheck, IconData, IconDoc, IconDownload, IconHome, IconList, IconLogo, IconTrash, IconUpload } from "./Icons";
 import "./App.css";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -37,6 +39,8 @@ function App() {
   const [profiles, setProfiles] = useState<Profiles | null>(null);
   const [settings, setSettings] = useState<Record<string, string>>({});
   const dialogs = useDialogs();
+  const [update, setUpdate] = useState<Update | null>(null);
+  const [updating, setUpdating] = useState<number | null | false>(false);
 
   const notify = useCallback((text: string, error = false) => {
     setToast({ text, error });
@@ -61,6 +65,22 @@ function App() {
     if (loaded) notifyDeadline(years, settings).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, profiles?.current]);
+
+  // Frissítés keresése induláskor (kikapcsolható az Adatok oldalon).
+  useEffect(() => {
+    if (loaded && settings.frissites !== "off") findUpdate().then(setUpdate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
+  async function runUpdate(u: Update) {
+    setUpdating(null);
+    try {
+      await installUpdate(u, setUpdating);
+    } catch (err) {
+      setUpdating(false);
+      notify(String(err), true);
+    }
+  }
 
   async function setSetting(key: string, value: string) {
     try {
@@ -207,6 +227,27 @@ function App() {
             </span>
           </div>
         )}
+        {update && (
+          <div className="notice ok update-notice">
+            <IconDownload />
+            <span>
+              <strong>Új verzió érhető el: {update.version}</strong>
+              {update.body ? <span className="muted"> · {update.body.split("\n")[0]}</span> : null}
+            </span>
+            {updating === false ? (
+              <>
+                <button className="btn primary" onClick={() => runUpdate(update)}>
+                  Frissítés és újraindítás
+                </button>
+                <button className="link" onClick={() => setUpdate(null)}>
+                  Később
+                </button>
+              </>
+            ) : (
+              <span className="muted">Letöltés… {updating !== null ? `${updating}%` : ""}</span>
+            )}
+          </div>
+        )}
         {reminder && (page === "overview" || page === "filing") && (
           <div className="notice warn deadline-notice">
             <IconBell />
@@ -230,6 +271,10 @@ function App() {
             onProfiles={setProfiles}
             onSetting={setSetting}
             notify={notify}
+            onUpdate={(u) => {
+              setUpdate(u);
+              if (u) setPage("overview");
+            }}
           />
         )}
         {page === "overview" && (

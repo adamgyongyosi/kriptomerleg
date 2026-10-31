@@ -43,11 +43,26 @@ jobs:
 
       - run: npm ci
 
+      - name: Felület-tesztek (Vitest)
+        run: npm test
+
       - name: Rust tesztek
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
+      # Ha a TAURI_SIGNING_PRIVATE_KEY titok be van állítva, a frissítő (updater) aláírt
+      # csomagjai is elkészülnek; nélküle a build ugyanúgy lefut, csak automatikus frissítés nélkül.
       - name: Tauri build
-        run: npm run tauri build -- --bundles ${{ matrix.bundles }}
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            npm run tauri build -- --bundles ${{ matrix.bundles }} --config '{"bundle":{"createUpdaterArtifacts":true}}'
+          else
+            echo "::notice::Nincs TAURI_SIGNING_PRIVATE_KEY titok: automatikus frissítés nélküli build."
+            npm run tauri build -- --bundles ${{ matrix.bundles }}
+          fi
 
       # Egységes, ékezet és verziószám nélküli fájlnevek: így a
       # releases/latest/download/<fájl> link mindig a legújabbra mutat (landing oldal).
@@ -59,9 +74,11 @@ jobs:
           if [ "$RUNNER_OS" = "Windows" ]; then
             cp "$B"/nsis/*-setup.exe "out/kriptomerleg_windows_x64-setup.exe"
             cp src-tauri/target/release/kriptomerleg.exe "out/kriptomerleg_windows_x64-portable.exe"
+            for s in "$B"/nsis/*-setup.exe.sig; do [ -f "$s" ] && cp "$s" "out/kriptomerleg_windows_x64-setup.exe.sig"; done
           else
             cp "$B"/deb/*.deb "out/kriptomerleg_linux_amd64.deb"
             cp "$B"/appimage/*.AppImage "out/kriptomerleg_linux_amd64.AppImage"
+            for s in "$B"/appimage/*.AppImage.sig; do [ -f "$s" ] && cp "$s" "out/kriptomerleg_linux_amd64.AppImage.sig"; done
           fi
           ls -la out
 
@@ -132,6 +149,31 @@ jobs:
             echo
             git log -1 --pretty=format:'%s%n%n%b' "$GITHUB_SHA" | grep -v '^Co-Authored-By:'
           } > notes.md
+
+      # Az automatikus frissítő ebből a fájlból tudja meg az új verziót (csak aláírt build esetén).
+      - name: latest.json (frissítő)
+        shell: bash
+        env:
+          TAG: ${{ steps.v.outputs.tag }}
+        run: |
+          if ! ls dist/*.sig >/dev/null 2>&1; then
+            echo "Nincs aláírt csomag, latest.json nem készül."
+            exit 0
+          fi
+          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          node -e '
+            const fs = require("fs");
+            const [version, base] = process.argv.slice(1);
+            const sig = (f) => fs.existsSync(`dist/${f}.sig`) ? fs.readFileSync(`dist/${f}.sig`, "utf8").trim() : null;
+            const platforms = {};
+            const win = sig("kriptomerleg_windows_x64-setup.exe");
+            if (win) platforms["windows-x86_64"] = { signature: win, url: `${base}/kriptomerleg_windows_x64-setup.exe` };
+            const lin = sig("kriptomerleg_linux_amd64.AppImage");
+            if (lin) platforms["linux-x86_64"] = { signature: lin, url: `${base}/kriptomerleg_linux_amd64.AppImage` };
+            const notes = fs.readFileSync("notes.md", "utf8").split("## Változás")[1]?.trim() ?? "";
+            fs.writeFileSync("dist/latest.json", JSON.stringify({ version, notes, pub_date: new Date().toISOString(), platforms }, null, 2));
+          ' "$(node -p "require('./package.json').version")" "$BASE"
+          cat dist/latest.json
 
       - uses: softprops/action-gh-release@v2
         with:
