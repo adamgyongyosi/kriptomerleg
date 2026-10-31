@@ -31,6 +31,12 @@ export async function installUpdate(update: Update, onProgress?: (percent: numbe
       }
     });
   } catch (e) {
+    // Régi (2026. október 31. előtti) példány a lecserélt aláírókulccsal: csak kézi letöltéssel frissíthető.
+    if (/signature|aláírás/i.test(String(e))) {
+      throw new Error(
+        "Ez a példány még a régi aláírókulccsal készült, ezért az új kiadást nem tudja ellenőrizni. Töltsd le egyszer kézzel a legújabbat a kiadások oldaláról; onnantól a frissítés automatikus.",
+      );
+    }
     throw new Error(
       `A frissítés nem telepíthető automatikusan (${e}). Töltsd le kézzel a kiadások oldaláról (.deb csomagnál ez a megoldás).`,
     );

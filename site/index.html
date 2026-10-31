@@ -3,11 +3,184 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kriptomérleg – a kriptóadód, a saját gépeden</title>
-  <meta name="description" content="Magyar kriptó-SZJA kalkulátor asztali appként: MNB árfolyam, tőzsdei import (Binance, Revolut, Kraken, Bybit), NAV-bevallási segéd. Fiók és felhő nélkül, minden adat nálad marad." />
-  <meta property="og:title" content="Kriptomérleg – a kriptóadód, a saját gépeden" />
-  <meta property="og:description" content="Magyar kriptó-SZJA kalkulátor. Helyben fut, fiók és felhő nélkül." />
-  <meta property="og:image" content="icon-256.png" />
+  <title>Kriptó adó kalkulátor (SZJA, NAV bevallás) – Kriptomérleg</title>
+  <meta name="description" content="Ingyenes kriptó adó kalkulátor: 15% SZJA MNB árfolyamon, tőzsdei import és NAV-bevallási segéd. Helyben fut, fiók és felhő nélkül." />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+  <link rel="canonical" href="https://adamgyongyosi.github.io/kriptomerleg/" />
+  <link rel="alternate" type="text/plain" title="LLM-összefoglaló" href="https://adamgyongyosi.github.io/kriptomerleg/llms.txt" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="hu_HU" />
+  <meta property="og:site_name" content="Kriptomérleg" />
+  <meta property="og:url" content="https://adamgyongyosi.github.io/kriptomerleg/" />
+  <meta property="og:title" content="Kriptó adó kalkulátor (SZJA, NAV bevallás) – Kriptomérleg" />
+  <meta property="og:description" content="15% SZJA MNB árfolyamon, adókiegyenlítés, tőzsdei import és NAV-bevallási segéd. Ingyenes, helyben fut, fiók nélkül." />
+  <meta property="og:image" content="https://adamgyongyosi.github.io/kriptomerleg/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Kriptomérleg – kriptó adó kalkulátor: 15% SZJA MNB árfolyamon, NAV-bevallási segéd" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Kriptó adó kalkulátor (SZJA, NAV bevallás) – Kriptomérleg" />
+  <meta name="twitter:description" content="15% SZJA MNB árfolyamon, adókiegyenlítés, tőzsdei import és NAV-bevallási segéd. Ingyenes, helyben fut." />
+  <meta name="twitter:image" content="https://adamgyongyosi.github.io/kriptomerleg/og-image.png" />
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://adamgyongyosi.github.io/kriptomerleg/#website",
+      "url": "https://adamgyongyosi.github.io/kriptomerleg/",
+      "name": "Kriptomérleg",
+      "inLanguage": "hu-HU"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://adamgyongyosi.github.io/kriptomerleg/#app",
+      "name": "Kriptomérleg",
+      "alternateName": [
+        "Kriptomerleg",
+        "Kriptó adó kalkulátor"
+      ],
+      "description": "Ingyenes kriptó adó kalkulátor: 15% SZJA MNB árfolyamon, tőzsdei import és NAV-bevallási segéd. Helyben fut, fiók és felhő nélkül.",
+      "url": "https://adamgyongyosi.github.io/kriptomerleg/",
+      "image": "https://adamgyongyosi.github.io/kriptomerleg/og-image.png",
+      "applicationCategory": "FinanceApplication",
+      "applicationSubCategory": "Kriptó adó kalkulátor",
+      "operatingSystem": "Windows 10, Windows 11, Linux, NixOS",
+      "inLanguage": "hu-HU",
+      "isAccessibleForFree": true,
+      "license": "https://github.com/adamgyongyosi/kriptomerleg",
+      "downloadUrl": "https://github.com/adamgyongyosi/kriptomerleg/releases/latest",
+      "softwareHelp": "https://github.com/adamgyongyosi/kriptomerleg#readme",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "HUF"
+      },
+      "featureList": [
+        "15% SZJA számítás MNB árfolyamon (EUR, USD, GBP, CHF)",
+        "Adókiegyenlítés a bevallott korábbi veszteséggel (Szja tv. 67/C. §)",
+        "Tőzsdei import: Binance, Revolut, Kraken, Bybit; banki kivonat",
+        "NAV-bevallási segéd: 164. sor, 06-os lap 202–209. sor",
+        "Éves kriptoeszköz-nyilvántartás PDF-ben, Excel és CSV export",
+        "Helyben futó app: nincs fiók, nincs felhő"
+      ],
+      "dateModified": "2026-10-31"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://adamgyongyosi.github.io/kriptomerleg/#gyik",
+      "inLanguage": "hu-HU",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Mennyi a kriptó adó Magyarországon?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A kriptoeszközökből származó jövedelem után 15% személyi jövedelemadót kell fizetni (Szja tv. 67/C. §), szociális hozzájárulási adó nincs. A jövedelem az év összes ügyleti bevételének és ügyleti kiadásának különbsége, forintban: amit kriptóból forintra, euróra vagy árura váltottál, mínusz amit kriptóra költöttél, díjakkal együtt."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Adóköteles a kripto–kripto csere?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Nem. Adóköteles ügylet csak akkor keletkezik, ha a kriptoeszközt törvényes fizetőeszközre (forint, euró stb.) váltod, vagy árut, szolgáltatást fizetsz vele. A kriptoeszközök egymás közötti cseréje, például BTC → ETH vagy USDT → SOL, nem adóköteles."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Mikor és hol kell bevallani a kriptó adót?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Az éves SZJA-bevallásban (például a 2025-ös évről a 25SZJA nyomtatványon), a 04-es lap 164. sorában. A bevallás és a befizetés határideje a következő év május 20. Az eSZJA bevallási tervezet a kriptós adatokat nem tartalmazza, ezért azt neked kell kiegészítened."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Mi az adókiegyenlítés, és levonható a kriptós veszteség?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Igen, adókiegyenlítés formájában: a veszteség 15%-a érvényesíthető, legfeljebb az adott évben és az előző két évben bevallott kriptoadó erejéig (06-os lap 202–209. sor). Feltétel, hogy a veszteséget a keletkezése évének bevallásában feltüntesd. A 2025-ös bevallástól a korábbi évek bevallott vesztesége időkorlát nélkül figyelembe vehető (2025. évi LXXXIII. törvény)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Kell adózni, ha még nem váltottam vissza forintra?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Amíg a kriptó kriptó marad, nincs fizetendő adó. A vételre fordított összeg viszont a vétel évében ügyleti kiadásnak számít, így abban az évben veszteséged keletkezhet. Ezt érdemes bevallani, mert csak így vonható le később, amikor nyereséggel adsz el."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Mi a kisértékű ügylet?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Nem kell bevételt megállapítani abból az ügyletből, amelynek bevétele legfeljebb a havi minimálbér 10%-a (2026-ban 32 280 Ft), ha aznap nem volt más bevételt hozó kriptós ügyleted, és az ilyen bevételek éves összege nem haladja meg a minimálbért (2026-ban 322 800 Ft)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Hol tárolja az adataimat?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Profilonként egy SQLite fájlban a gépeden. Windowson a %APPDATA%\\hu.kriptoado.app\\ mappában, Linuxon a ~/.local/share/hu.kriptoado.app/ mappában. Az app hetente magától ment a backups almappába, és az Adatok és mentés oldalon jelszóval titkosított mentést is készíthetsz."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Kell hozzá internet?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Csak az MNB árfolyam lekéréséhez és a frissítések kereséséhez; a már lekért napokat megjegyzi. Internet nélkül az árfolyamot kézzel is megadhatod, például a banki bizonylatról."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Frissül magától?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Igen: induláskor megnézi, van-e újabb kiadás, és felajánlja a letöltést és az újraindítást. Windowson és AppImage-nél ez automatikus; .deb csomagnál és NixOS-en a csomagkezelővel frissíts. A keresés kikapcsolható."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Melyik tőzsdéket tudja beolvasni?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A Binance (Transaction History), a Revolut (kripto kivonat, régi és új formátum), a Kraken (Ledgers, vagy közvetlenül csak olvasó API-kulccsal) és a Bybit (spot kereskedések, Convert) exportját. Bankszámlakivonatból (Revolut, Wise, magyar bankok) a tőzsdékre küldött és onnan érkező utalásokat veszi át. A saját, évenkénti lapokra bontott Excel-táblázatodat is beolvassa. A repóban mindegyikhez van mintafájl."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Hogyan számolja az adót?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Az év eredménye a fiatra váltott kivételek (bevétel) és a kriptóra költött összegek (kiadás, díjakkal) különbsége, forintban. Ennek 15%-a a fizetendő SZJA. A veszteség 15%-a adókiegyenlítésként levonható, legfeljebb az adott és az előző két évben bevallott kriptóadó erejéig, ha a veszteséget annak évében bevallottad. A kriptóval fizetett vásárlás bevételnek számít; a kisértékű ügyletek (a minimálbér 10%-áig) kihagyása bekapcsolható. A kripto–kripto csere nem adóköteles."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Ez adótanácsadás?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Nem. A Kriptomérleg tájékoztató számítást végez a NAV kitöltési útmutatója és a hatályos szabályok alapján. Bizonytalan esetben kérdezz könyvelőt vagy adótanácsadót."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Mennyibe kerül?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A béta időszakban ingyenes."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
   <meta name="theme-color" content="#0f766e" />
   <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <link rel="apple-touch-icon" href="icon-256.png" />
@@ -69,6 +242,7 @@
     h1, h2, h3, p { margin: 0; }
     .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
     section { padding: 72px 0; }
+    .updated { margin-top: 18px; font-size: 13px; color: var(--muted); }
     .eyebrow { font-size: 13px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand); }
     h2 { font-size: clamp(26px, 3.4vw, 36px); letter-spacing: -0.02em; line-height: 1.15; margin-top: 8px; }
     .lead { color: var(--ink-2); font-size: 17px; max-width: 640px; margin-top: 12px; }
@@ -207,7 +381,7 @@
 <body>
   <header class="top">
     <div class="wrap">
-      <a class="brand" href="#"><img src="logo.svg" alt="" />Kriptomérleg</a>
+      <a class="brand" href="#"><img src="logo.svg" alt="" width="32" height="32" />Kriptomérleg</a>
       <nav class="links">
         <a href="#funkciok">Funkciók</a>
         <a href="#hogyan">Hogyan működik</a>
@@ -222,8 +396,7 @@
     <section class="hero">
       <div class="wrap">
         <div>
-          <span class="eyebrow">Magyar kriptó-SZJA kalkulátor</span>
-          <h1 style="margin-top:12px">A kriptóadód,<br /><em>a saját gépeden.</em></h1>
+          <h1><span class="eyebrow" style="display:block;margin-bottom:12px">Kriptó adó kalkulátor · SZJA · NAV bevallás</span>A kriptóadód,<br /><em>a saját gépeden.</em></h1>
           <p class="lead">
             A Kriptomérleg MNB árfolyamon kiszámolja a 15%-os kriptóadót, beolvassa a tőzsdei exportjaidat, és megmutatja,
             mit hova írj a NAV-bevallásban. Nincs regisztráció és nincs felhő: minden adat nálad marad.
@@ -242,7 +415,7 @@
         </div>
 
         <div class="mock" aria-label="Az alkalmazás illusztrációja">
-          <div class="mock-bar"><img src="logo.svg" alt="" />Kriptomérleg — 2026. év</div>
+          <div class="mock-bar"><img src="logo.svg" alt="" width="18" height="18" />Kriptomérleg — 2026. év</div>
           <div class="mock-body">
             <div class="m-hero">
               <div>
@@ -382,6 +555,12 @@
         <span class="eyebrow">GYIK</span>
         <h2>Gyakori kérdések</h2>
         <div class="faq">
+          <details><summary>Mennyi a kriptó adó Magyarországon?</summary><p>A kriptoeszközökből származó jövedelem után 15% személyi jövedelemadót kell fizetni (Szja tv. 67/C. §), szociális hozzájárulási adó nincs. A jövedelem az év összes ügyleti bevételének és ügyleti kiadásának különbsége, forintban: amit kriptóból forintra, euróra vagy árura váltottál, mínusz amit kriptóra költöttél, díjakkal együtt.</p></details>
+          <details><summary>Adóköteles a kripto–kripto csere?</summary><p>Nem. Adóköteles ügylet csak akkor keletkezik, ha a kriptoeszközt törvényes fizetőeszközre (forint, euró stb.) váltod, vagy árut, szolgáltatást fizetsz vele. A kriptoeszközök egymás közötti cseréje, például BTC → ETH vagy USDT → SOL, nem adóköteles.</p></details>
+          <details><summary>Mikor és hol kell bevallani a kriptó adót?</summary><p>Az éves SZJA-bevallásban (például a 2025-ös évről a 25SZJA nyomtatványon), a 04-es lap 164. sorában. A bevallás és a befizetés határideje a következő év május 20. Az eSZJA bevallási tervezet a kriptós adatokat nem tartalmazza, ezért azt neked kell kiegészítened.</p></details>
+          <details><summary>Mi az adókiegyenlítés, és levonható a kriptós veszteség?</summary><p>Igen, adókiegyenlítés formájában: a veszteség 15%-a érvényesíthető, legfeljebb az adott évben és az előző két évben bevallott kriptoadó erejéig (06-os lap 202–209. sor). Feltétel, hogy a veszteséget a keletkezése évének bevallásában feltüntesd. A 2025-ös bevallástól a korábbi évek bevallott vesztesége időkorlát nélkül figyelembe vehető (2025. évi LXXXIII. törvény).</p></details>
+          <details><summary>Kell adózni, ha még nem váltottam vissza forintra?</summary><p>Amíg a kriptó kriptó marad, nincs fizetendő adó. A vételre fordított összeg viszont a vétel évében ügyleti kiadásnak számít, így abban az évben veszteséged keletkezhet. Ezt érdemes bevallani, mert csak így vonható le később, amikor nyereséggel adsz el.</p></details>
+          <details><summary>Mi a kisértékű ügylet?</summary><p>Nem kell bevételt megállapítani abból az ügyletből, amelynek bevétele legfeljebb a havi minimálbér 10%-a (2026-ban 32 280 Ft), ha aznap nem volt más bevételt hozó kriptós ügyleted, és az ilyen bevételek éves összege nem haladja meg a minimálbért (2026-ban 322 800 Ft).</p></details>
           <details><summary>Hol tárolja az adataimat?</summary><p>Profilonként egy SQLite fájlban a gépeden. Windowson a <code>%APPDATA%\hu.kriptoado.app\</code> mappában, Linuxon a <code>~/.local/share/hu.kriptoado.app/</code> mappában. Az app hetente magától ment a <code>backups</code> almappába, és az <em>Adatok és mentés</em> oldalon jelszóval titkosított mentést is készíthetsz.</p></details>
           <details><summary>Kell hozzá internet?</summary><p>Csak az MNB árfolyam lekéréséhez és a frissítések kereséséhez; a már lekért napokat megjegyzi. Internet nélkül az árfolyamot kézzel is megadhatod, például a banki bizonylatról.</p></details>
           <details><summary>Frissül magától?</summary><p>Igen: induláskor megnézi, van-e újabb kiadás, és felajánlja a letöltést és az újraindítást. Windowson és AppImage-nél ez automatikus; .deb csomagnál és NixOS-en a csomagkezelővel frissíts. A keresés kikapcsolható.</p></details>
@@ -390,6 +569,7 @@
           <details><summary>Ez adótanácsadás?</summary><p>Nem. A Kriptomérleg tájékoztató számítást végez a NAV kitöltési útmutatója és a hatályos szabályok alapján. Bizonytalan esetben kérdezz könyvelőt vagy adótanácsadót.</p></details>
           <details><summary>Mennyibe kerül?</summary><p>A béta időszakban ingyenes.</p></details>
         </div>
+        <p class="updated">Frissítve: <time datetime="2026-10-31">2026. október 31.</time> · a 2025. évi LXXXIII. törvénnyel módosított Szja tv. 67/C. § alapján. Tájékoztató, nem adótanácsadás.</p>
       </div>
     </section>
   </main>
@@ -397,7 +577,7 @@
   <footer>
     <div class="wrap">
       <div>
-        <a class="brand" href="#"><img src="logo.svg" alt="" />Kriptomérleg</a>
+        <a class="brand" href="#"><img src="logo.svg" alt="" width="32" height="32" />Kriptomérleg</a>
         <p style="margin-top:8px">A kriptóadód, a saját gépeden.</p>
       </div>
       <p class="disclaimer">Tájékoztató számítás, nem adótanácsadás. A NAV, az MNB és a feltüntetett tőzsdék nevei a tulajdonosaikéi; a Kriptomérleg nem áll kapcsolatban velük.</p>

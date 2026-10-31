@@ -179,6 +179,7 @@ A `npm test` a felület-teszteket futtatja (Vitest + Testing Library, jsdom): ö
 - Az aláíráshoz a CI-nek két titok kell (*Settings → Secrets and variables → Actions*): `TAURI_SIGNING_PRIVATE_KEY` (a privát kulcsfájl tartalma) és `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (üres, ha a kulcsnak nincs jelszava). Ha nincsenek beállítva, a build ugyanúgy elkészül, csak `latest.json` és `.sig` fájlok nélkül.
 - Új kulcspár: `npx tauri signer generate -w ~/.tauri/kriptomerleg-updater.key`, majd a `.pub` tartalma a `tauri.conf.json` `plugins.updater.pubkey` mezőjébe. A privát kulcs ne kerüljön a repóba.
 - A frissítés csak publikus repóból működik (privát repó kiadásai bejelentkezés nélkül nem tölthetők le); ugyanez igaz a weboldal letöltőgombjaira.
+- A 2026. október 31. előtt készült példányok (a 0.3.13 előtti kiadások és a korábbi helyi buildek) még a lecserélt kulcs nyilvános részét tartalmazzák, ezért „The signature was created with a different key” hibát adnak. Ezeket egyszer kézzel kell frissíteni a legújabb kiadásra; onnantól az automatikus frissítés működik. Az app ilyenkor ezt írja ki.
 
 ### Linux csomagtárak
 
@@ -248,6 +249,18 @@ A landing oldal a `site/` mappában van: egyetlen statikus `index.html` (külső
 - A repó neve egy helyen szerepel a lap alján lévő szkriptben (`REPO`), átnevezésnél csak ezt kell módosítani.
 - A funkciólista (9 kártya), az adatvédelmi sáv, az összevetés és a GYIK az app funkcióit követi; új funkciónál ezeket is frissítsd.
 
+### Keresőoptimalizálás (SEO, GEO, AEO)
+
+- **Cím és leírás:** a `<title>` és a meta description a fő keresett kifejezésekkel („kriptó adó kalkulátor”, „SZJA”, „NAV bevallás”); a H1 felső sora ugyanezt tartalmazza, a szlogen megmarad.
+- **Kanonikus URL és megosztás:** `canonical`, Open Graph (`og:url`, `og:locale` = `hu_HU`, 1200×630-as `og-image.png`) és Twitter-kártya. A megosztási kép forrása `brand/og-card.html`; újragenerálás Edge-dzsel a fájl elején leírt paranccsal.
+- **Strukturált adat (JSON-LD):** `WebSite`, `SoftwareApplication` (ingyenes, Windows/Linux, `FinanceApplication`, letöltési link) és `FAQPage`. A `FAQPage` szövege pontosan a látható GYIK; ha a GYIK változik, a JSON-LD-t is frissíteni kell (a Google eltérés esetén figyelmen kívül hagyja).
+- **AI-válaszmotorok (GEO/AEO):** a GYIK a valódi keresési kérdésekre (mennyi a kriptóadó, adóköteles-e a kripto–kripto csere, mikor kell bevallani, adókiegyenlítés, kisértékű ügylet) ad rövid, tényszerű, törvényhivatkozásos választ. A `site/llms.txt` gépi olvasásra szánt összefoglaló a fő tényekkel és linkekkel. Az oldalon szerepel a frissítés dátuma (`<time>`), a JSON-LD-ben `dateModified`.
+- **Sitemap:** `site/sitemap.xml`. Projektoldalon (`/kriptomerleg/`) saját `robots.txt` nem lehet (az csak a domain gyökerében működik), ezért a sitemapet kézzel kell beküldeni:
+  1. [Google Search Console](https://search.google.com/search-console) → *Tulajdon hozzáadása* → *URL-előtag*: `https://adamgyongyosi.github.io/kriptomerleg/` → ellenőrzés *HTML-címkével*: a kapott `<meta name="google-site-verification" …>` sort tedd a `site/index.html` `<head>`-jébe, pushold, majd *Ellenőrzés*.
+  2. *Webhelytérképek* → `sitemap.xml` → *Beküldés*. Az *URL-vizsgálat* → *Indexelés kérése* gyorsítja az első indexelést.
+  3. [Bing Webmaster Tools](https://www.bing.com/webmasters) → *Importálás a Google Search Console-ból* (a Bing adja a ChatGPT keresés találatainak egy részét is).
+- Ellenőrzés: [Rich Results Test](https://search.google.com/test/rich-results) és [Schema Markup Validator](https://validator.schema.org/) az oldal URL-jével.
+
 Arculat (logó, színek, hangnem): [`brand/README.md`](brand/README.md).
 
 ## Felépítés
@@ -262,6 +275,7 @@ Arculat (logó, színek, hangnem): [`brand/README.md`](brand/README.md).
 - `src-tauri/src/pdf.rs` – éves nyilvántartás PDF-ben
 - `src/` – React felület: `App.tsx` (oldalak), `EntryForm.tsx`, `Filing.tsx` (bevallási segéd), `DataPage.tsx` (adatok és mentés), `ImportDialog.tsx`, `Dialogs.tsx` (appon belüli párbeszédablakok), `updates.ts` (frissítő); tesztek: `*.test.ts(x)`
 - `packaging/` – AUR és Flatpak csomagleírás
+- `site/` – landing oldal (`index.html`, `og-image.png`, `sitemap.xml`, `llms.txt`); `brand/og-card.html` – a megosztási kép forrása
 - `brand/` – logó és arculati leírás
 - `site/` – landing oldal (GitHub Pages)
 - `src/` – React felület (`App.tsx`, `EntryForm.tsx`, `ImportDialog.tsx`, `Filing.tsx`, `Chart.tsx`)
