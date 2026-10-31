@@ -225,6 +225,14 @@ Fejlesztői környezet: `nix develop`, utána `npm install && npm run tauri dev`
 
 Alternatíva: az AppImage NixOS-en `appimage-run`-nal indítható (`programs.appimage.enable = true;`).
 
+## Biztonság
+
+- **Tartalombiztonsági szabály (CSP):** a felület csak a saját fájljait töltheti be, hálózatra csak a Tauri IPC-n át „beszélhet” (`connect-src ipc: http://ipc.localhost`), objektum és űrlapküldés tiltva (`tauri.conf.json` → `app.security.csp`). Az MNB-, Kraken- és frissítéslekérés a Rust oldalon fut, nem a webnézetben. Fejlesztői módban (`devCsp: null`) a Vite HMR miatt nincs CSP.
+- **Jogosultságok** (`src-tauri/capabilities/default.json`): a fájlkezelőben csak az app saját adatmappája nyitható meg (`$APPDATA/**`, a mentések mappájához); a frissítő csak a `tauri.conf.json`-ban rögzített nyilvános kulccsal aláírt csomagot telepít.
+- **Titkok:** a Kraken API kulcsot és titkot az app nem menti, és nem naplózza. A mentésjelszót sem tárolja (Argon2id + ChaCha20-Poly1305). Az SQL lekérdezések kötött paraméterekkel futnak.
+- **Függőségek:** a CI `audit` lépése minden pushnál lefuttatja a `cargo audit`-ot (RustSec) és az `npm audit --omit=dev`-et. Helyben: `cargo install cargo-audit`, majd `cd src-tauri && cargo audit`. Tudatos kivétel indoklással: `src-tauri/.cargo/audit.toml` (`RUSTSEC-2026-0187`, lopdf: csak PDF *beolvasásakor* érint, az app PDF-et csak ír). A fennmaradó figyelmeztetések (karbantartatlan / unsound crate-ek) a Tauri GTK- és D-Bus-függőségeiből jönnek.
+- **Biztonsági audit (2026-10-31):** a 0.3.0 változásainak átnézése (fájlútvonalas parancsok, profilazonosítók, mentés-visszaállítás, titkosítás, Kraken API, import, frissítő, CI) nem talált kihasználható hibát. Javítva: a Vitest fejlesztői függőség kritikus sérülékenysége (5-ös verzióra emelve), a CSP bekapcsolva, a mappamegnyitási jog szűkítve.
+
 ## Weboldal
 
 A landing oldal a `site/` mappában van: egyetlen statikus `index.html` (külső függőség nélkül), a logó és az ikon. Sötét/világos módot és mobilnézetet is kezel, a letöltőgombok a legfrissebb release fájljaira mutatnak, és kiemeli a látogató rendszeréhez illőt.

@@ -1,0 +1,7 @@
+# cargo audit beállítás (a CI „Biztonsági audit” lépése is ezt használja).
+[advisories]
+ignore = [
+  # lopdf 0.31 (a printpdf 0.7 függősége): verem-túlcsordulás mélyen egymásba ágyazott PDF
+  # *beolvasásakor*. Az app PDF-et csak ír (éves nyilvántartás), idegen PDF-et nem olvas be.
+  "RUSTSEC-2026-0187",
+]

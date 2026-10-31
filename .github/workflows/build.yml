@@ -88,6 +88,21 @@ jobs:
           path: out/*
           if-no-files-found: error
 
+  # Ismert sérülékenységek a függőségekben (RustSec adatbázis, npm advisory).
+  # Kivételek indoklással: src-tauri/.cargo/audit.toml.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: cargo audit
+        working-directory: src-tauri
+        run: cargo audit
+      - name: npm audit (futásidejű függőségek)
+        run: npm audit --omit=dev --audit-level=moderate
+
   nix:
     runs-on: ubuntu-latest
     steps:
