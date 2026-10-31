@@ -247,7 +247,8 @@ A landing oldal a `site/` mappában van: egyetlen statikus `index.html` (külső
 - Közzététel: a `.github/workflows/pages.yml` minden `site/` változásnál feltölti a GitHub Pages-re.
 - **Egyszeri beállítás:** Settings → Pages → Source: *GitHub Actions*. Ingyenes GitHub-fiókkal a Pages (és a mindenki által letölthető release) csak **publikus** repóból működik.
 - A repó neve egy helyen szerepel a lap alján lévő szkriptben (`REPO`), átnevezésnél csak ezt kell módosítani.
-- A funkciólista (9 kártya), az adatvédelmi sáv, az összevetés és a GYIK az app funkcióit követi; új funkciónál ezeket is frissítsd.
+- A funkciókártyák (9 db), a „Minden funkció részletesen” lista (`#minden-funkcio`, 6 csoport: rögzítés, adószámítás, bevallás, import, export és mentés, az app), az adatvédelmi sáv, az összevetés és a GYIK az app funkcióit követi; új funkciónál ezeket, a JSON-LD `featureList`-et és a `site/llms.txt`-t is frissítsd.
+- A főoldali app-mockup kipróbálható: a típus (befizetés, kivétel, fizetés kriptóval) és a deviza (€, $, £, Ft) váltható, példa árfolyamokkal.
 
 ### Keresőoptimalizálás (SEO, GEO, AEO)
 

@@ -14,6 +14,15 @@ Frissítve: 2026-10-31. Tájékoztató számítás, nem adótanácsadás.
 - Veszteség: adókiegyenlítés (06-os lap 202–209. sor), ha a veszteséget a keletkezése évében bevallották; a 2025-ös
   bevallástól időkorlát nélkül (2025. évi LXXXIII. törvény).
 
+## Funkciók
+
+- **Rögzítés:** Befizetés, kivétel és fizetés kriptóval (áru, szolgáltatás – bevételnek számít); Deviza: euró, dollár, font, svájci frank vagy forint; MNB-árfolyam automatikusan a teljesítés napjára; hétvégén az utolsó közzétett; Kézi árfolyam a banki bizonylatról; Ezres tagolás gépelés közben; a mínusz jel kivételt jelent; Rögzítés előtt látod, mennyivel változik az évi adó.
+- **Adószámítás:** 15% SZJA az éves eredmény után (Szja tv. 67/C. §), szocho nélkül; Adókiegyenlítés a korábbi évek bevallott veszteségével, a 2025-ös szabály szerint időkorlát nélkül; Évenként jelölöd, melyik évi veszteséget vallottad be; 2022 előtti tételek a 2022-es évbe számítanak (NAV-álláspont); Kisértékű ügyletek kihagyása bekapcsolható (minimálbér 10%-áig); Adómentesen még kivehető összeg forintban és euróban.
+- **Bevallás:** Bevallási segéd: 164. sor, 06-os lap 202–209. sor, C lap 75. sor, „Másol” gombbal; Kitöltendő sorok mentése CSV-be; Önellenőrzés-segéd: melyik évi bevallásban pótold a kimaradt veszteséget, és mennyit ér; Határidő-emlékeztető március 15. és május 20. között, rendszerértesítéssel; Évek és adó: évenkénti táblázat és grafikon.
+- **Import:** Binance, Revolut (régi és új kivonat), Kraken, Bybit (spot és Convert) exportja; Kraken közvetlenül, csak olvasó API-kulccsal (a kulcsot nem menti); Bankszámlakivonat (Revolut, Wise, magyar bankok): tőzsdére küldött és onnan érkező utalások; Régi, saját Excel-táblázat évenkénti lapokkal; Naponta összevonva, díjakkal; újraimportáláskor frissít, a más forrásból már meglévő napot jelzi.
+- **Export és mentés:** Éves kriptoeszköz-nyilvántartás PDF-ben (összesítő, veszteség-nyilvántartás, tételek); Excel (.xlsx) és CSV export; Mentés fájlba, jelszóval titkosítva is; visszaállítás egy kattintással; Heti automatikus mentés, az utolsó 8 megmarad; Több profil: külön nyilvántartás a családtagoknak.
+- **Az app:** Windows-telepítő és hordozható exe, Linux .deb és AppImage, NixOS flake; Automatikus frissítés aláírt csomagokkal; Minden adat a gépeden, SQLite-ban; nincs fiók, nincs felhő; Sötét és világos mód; Nyílt forráskód a GitHubon.
+
 ## Linkek
 
 - [Weboldal](https://adamgyongyosi.github.io/kriptomerleg/): funkciók, letöltés, GYIK

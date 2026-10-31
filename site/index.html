@@ -58,7 +58,12 @@
         "priceCurrency": "HUF"
       },
       "featureList": [
-        "15% SZJA számítás MNB árfolyamon (EUR, USD, GBP, CHF)",
+        "15% SZJA számítás MNB árfolyamon (EUR, USD, GBP, CHF, HUF)",
+        "Befizetés, kivétel és fizetés kriptóval (áru, szolgáltatás) rögzítése",
+        "Adómentesen még kivehető összeg forintban és euróban",
+        "Kisértékű ügyletek kezelése és önellenőrzés-segéd a kimaradt veszteséghez",
+        "Határidő-emlékeztető, automatikus frissítés",
+        "Titkosított mentés, heti automatikus mentés, több profil",
         "Adókiegyenlítés a bevallott korábbi veszteséggel (Szja tv. 67/C. §)",
         "Tőzsdei import: Binance, Revolut, Kraken, Bybit; banki kivonat",
         "NAV-bevallási segéd: 164. sor, 06-os lap 202–209. sor",
@@ -296,13 +301,24 @@
     .m-stat { border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; }
     .m-stat b { display: block; font-size: 15px; }
     .m-entry { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 10px; }
-    .m-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--surface-2); padding: 3px; border-radius: 10px; font-size: 13px; font-weight: 650; text-align: center; }
-    .m-toggle span { padding: 6px; border-radius: 8px; color: var(--muted); }
-    .m-toggle span.on { background: var(--surface); color: #d9561f; box-shadow: 0 0 0 1px var(--line); }
+    .m-toggle { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 4px; background: var(--surface-2); padding: 3px; border-radius: 10px; }
+    .m-toggle button, .m-ccy button { font: inherit; font-size: 13px; font-weight: 650; border: none; background: none; cursor: pointer; padding: 6px 4px; border-radius: 8px; color: var(--muted); }
+    .m-toggle button.on { background: var(--surface); color: #d9561f; box-shadow: 0 0 0 1px var(--line); }
+    .m-toggle button.on.in { color: #2a78d6; }
+    .m-toggle button:focus-visible, .m-ccy button:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
     .m-amount { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--brand); border-radius: 12px; padding: 6px 8px 6px 14px; font-size: 24px; font-weight: 650; }
     .m-ccy { display: flex; gap: 2px; background: var(--surface-2); border-radius: 9px; padding: 3px; font-size: 14px; }
-    .m-ccy span { padding: 3px 10px; border-radius: 7px; color: var(--muted); }
-    .m-ccy span.on { background: var(--surface); color: var(--brand); box-shadow: 0 0 0 1px var(--line); }
+    .m-ccy button { font-size: 14px; padding: 3px 9px; border-radius: 7px; }
+    .m-ccy button.on { background: var(--surface); color: var(--brand); box-shadow: 0 0 0 1px var(--line); }
+    .m-note { font-size: 12px; color: var(--muted); }
+    .m-note::before { content: none; }
+    .all-features { margin-top: 44px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 32px; }
+    .feature-group h3 { font-size: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    .feature-group ul { margin: 10px 0 0; padding-left: 18px; display: grid; gap: 7px; color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+    .feature-group strong { color: var(--ink); font-weight: 650; }
+    .all-features-head { margin-top: 56px; }
+    @media (max-width: 920px) { .all-features { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .all-features { grid-template-columns: 1fr; } }
     .m-result { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
     .m-result div { display: flex; justify-content: space-between; gap: 8px; }
     .m-result b { color: var(--ink); }
@@ -434,12 +450,15 @@
               <div class="m-stat"><span class="m-label">Nyereség</span><b>301 655 Ft</b></div>
             </div>
             <div class="m-entry">
-              <div class="m-toggle"><span>Befizetés</span><span class="on">Kivétel</span></div>
-              <div class="m-amount">1 500 <span class="m-ccy"><span class="on">€</span><span>Ft</span></span></div>
+              <div class="m-toggle" role="group" aria-label="Tétel típusa (kipróbálható)">
+                <button type="button" data-kind="in">Befizetés</button><button type="button" data-kind="out" class="on">Kivétel</button><button type="button" data-kind="pay">Fizetés kriptóval</button>
+              </div>
+              <div class="m-amount"><span id="m-amount">1 500</span> <span class="m-ccy" role="group" aria-label="Deviza (kipróbálható)"><button type="button" data-ccy="EUR" class="on">€</button><button type="button" data-ccy="USD">$</button><button type="button" data-ccy="GBP">£</button><button type="button" data-ccy="HUF">Ft</button></span></div>
               <div class="m-result">
-                <div><span>MNB árfolyam, 2026. okt. 26.</span><b>366,95 Ft</b></div>
-                <div><span>Forintban</span><b>550 425 Ft</b></div>
+                <div id="m-rate-row"><span id="m-rate-label">MNB árfolyam, 2026. okt. 26.</span><b id="m-rate">366,95 Ft</b></div>
+                <div><span>Forintban</span><b id="m-huf">550 425 Ft</b></div>
                 <div><span>Fizetendő adó 2026</span><span>0 Ft → <b>0 Ft</b></span></div>
+                <div id="m-note" class="m-note">Kattints a típusra vagy a devizára – példa árfolyamokkal.</div>
               </div>
             </div>
           </div>
@@ -480,6 +499,16 @@
           <div class="card"><div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v6.5c0 1.7 3.6 3 8 3s8-1.3 8-3V5.5M4 12v6.5c0 1.7 3.6 3 8 3s8-1.3 8-3V12"/></svg></div><h3>Mentés és profilok</h3><p>Heti automatikus mentés, mentés fájlba jelszavas titkosítással, visszaállítás. Külön profil a házastársnak vagy a családtagoknak.</p></div>
           <div class="card"><div class="p-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9M10 19.5a2 2 0 0 0 4 0"/></svg></div><h3>Határidő-emlékeztető</h3><p>Március 15. és május 20. között szól, ha az előző évre kriptoadó, visszajáró adó vagy bevallandó veszteség van.</p></div>
         </div>
+
+        <h3 class="all-features-head" id="minden-funkcio">Minden funkció részletesen</h3>
+        <div class="all-features">
+          <div class="feature-group"><h3>Rögzítés</h3><ul><li>Befizetés, kivétel és <strong>fizetés kriptóval</strong> (áru, szolgáltatás – bevételnek számít)</li><li>Deviza: <strong>euró, dollár, font, svájci frank</strong> vagy forint</li><li>MNB-árfolyam automatikusan a teljesítés napjára; hétvégén az utolsó közzétett</li><li>Kézi árfolyam a banki bizonylatról</li><li>Ezres tagolás gépelés közben; a mínusz jel kivételt jelent</li><li>Rögzítés előtt látod, mennyivel változik az évi adó</li></ul></div>
+          <div class="feature-group"><h3>Adószámítás</h3><ul><li>15% SZJA az éves eredmény után (Szja tv. 67/C. §), szocho nélkül</li><li>Adókiegyenlítés a korábbi évek bevallott veszteségével, a 2025-ös szabály szerint időkorlát nélkül</li><li>Évenként jelölöd, melyik évi veszteséget vallottad be</li><li>2022 előtti tételek a 2022-es évbe számítanak (NAV-álláspont)</li><li>Kisértékű ügyletek kihagyása bekapcsolható (minimálbér 10%-áig)</li><li><strong>Adómentesen még kivehető</strong> összeg forintban és euróban</li></ul></div>
+          <div class="feature-group"><h3>Bevallás</h3><ul><li>Bevallási segéd: 164. sor, 06-os lap 202–209. sor, C lap 75. sor, „Másol” gombbal</li><li>Kitöltendő sorok mentése CSV-be</li><li><strong>Önellenőrzés-segéd</strong>: melyik évi bevallásban pótold a kimaradt veszteséget, és mennyit ér</li><li>Határidő-emlékeztető március 15. és május 20. között, rendszerértesítéssel</li><li>Évek és adó: évenkénti táblázat és grafikon</li></ul></div>
+          <div class="feature-group"><h3>Import</h3><ul><li>Binance, Revolut (régi és új kivonat), Kraken, Bybit (spot és Convert) exportja</li><li>Kraken közvetlenül, csak olvasó API-kulccsal (a kulcsot nem menti)</li><li><strong>Bankszámlakivonat</strong> (Revolut, Wise, magyar bankok): tőzsdére küldött és onnan érkező utalások</li><li>Régi, saját Excel-táblázat évenkénti lapokkal</li><li>Naponta összevonva, díjakkal; újraimportáláskor frissít, a más forrásból már meglévő napot jelzi</li></ul></div>
+          <div class="feature-group"><h3>Export és mentés</h3><ul><li><strong>Éves kriptoeszköz-nyilvántartás PDF-ben</strong> (összesítő, veszteség-nyilvántartás, tételek)</li><li>Excel (.xlsx) és CSV export</li><li>Mentés fájlba, jelszóval titkosítva is; visszaállítás egy kattintással</li><li>Heti automatikus mentés, az utolsó 8 megmarad</li><li><strong>Több profil</strong>: külön nyilvántartás a családtagoknak</li></ul></div>
+          <div class="feature-group"><h3>Az app</h3><ul><li>Windows-telepítő és hordozható exe, Linux .deb és AppImage, NixOS flake</li><li><strong>Automatikus frissítés</strong> aláírt csomagokkal</li><li>Minden adat a gépeden, SQLite-ban; nincs fiók, nincs felhő</li><li>Sötét és világos mód</li><li>Nyílt forráskód a GitHubon</li></ul></div>
+        </div>
       </div>
     </section>
 
@@ -488,7 +517,7 @@
         <span class="eyebrow">Hogyan működik</span>
         <h2>Három lépés a bevallásig</h2>
         <div class="steps">
-          <div class="step"><h3>Rögzíts vagy importálj</h3><p>Írd be, mennyi eurót váltottál kriptóra vagy vissza, vagy töltsd be a tőzsdei exportodat. A mínusz jel kivételt jelent.</p></div>
+          <div class="step"><h3>Rögzíts vagy importálj</h3><p>Írd be, mennyit váltottál kriptóra vagy vissza (euróban, dollárban, fontban, frankban vagy forintban), mit fizettél kriptóval, vagy töltsd be a tőzsdei exportot, illetve a bankszámlakivonatot.</p></div>
           <div class="step"><h3>Nézd meg az adót</h3><p>Az app évenként kiszámolja az eredményt, a 15%-os adót és a levonható veszteséget, MNB árfolyamon.</p></div>
           <div class="step"><h3>Másold át a NAV-ba</h3><p>A Bevallási segéd soronként megmutatja, mit kell beírni az eSZJA felületen, és egy kattintással másolhatod a számokat. Az éves nyilvántartást PDF-ben eltárolhatod.</p></div>
         </div>
@@ -596,6 +625,36 @@
     document.getElementById("gh-link").href = GH;
     document.getElementById("nix-readme").href = GH + "#nixos";
     document.getElementById("nix-cmd").textContent = "nix run github:" + REPO;
+
+
+    // A főoldali mockup kipróbálható: típus és deviza váltása, példa árfolyamokkal.
+    (function () {
+      const rates = { EUR: 366.95, USD: 315.4, GBP: 421.8, HUF: 1 };
+      const amounts = { EUR: 1500, USD: 1500, GBP: 1500, HUF: 500000 };
+      const notes = {
+        in: "Befizetés: kriptóra költött összeg, kiadásnak számít.",
+        out: "Kivétel: kriptóból forintra, euróra váltott összeg, bevételnek számít.",
+        pay: "Fizetés kriptóval (pl. ajándékkártya, utazás): bevételnek számít, mint a kivétel.",
+      };
+      // Ezres tagolás négyjegyű számnál is, mint az app összeg mezőjében (1 500).
+      const fmt = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+      const state = { kind: "out", ccy: "EUR" };
+      const render = () => {
+        const a = amounts[state.ccy];
+        document.getElementById("m-amount").textContent = fmt(a);
+        document.getElementById("m-rate-row").hidden = state.ccy === "HUF";
+        document.getElementById("m-rate").textContent = rates[state.ccy].toLocaleString("hu-HU", { minimumFractionDigits: 2 }) + " Ft";
+        document.getElementById("m-huf").textContent = fmt(a * rates[state.ccy]) + " Ft";
+        document.getElementById("m-note").textContent = notes[state.kind];
+        document.querySelectorAll(".m-toggle [data-kind]").forEach((b) => {
+          b.classList.toggle("on", b.dataset.kind === state.kind);
+          b.classList.toggle("in", b.dataset.kind === "in");
+        });
+        document.querySelectorAll(".m-ccy [data-ccy]").forEach((b) => b.classList.toggle("on", b.dataset.ccy === state.ccy));
+      };
+      document.querySelectorAll(".m-toggle [data-kind]").forEach((b) => b.addEventListener("click", () => { state.kind = b.dataset.kind; render(); }));
+      document.querySelectorAll(".m-ccy [data-ccy]").forEach((b) => b.addEventListener("click", () => { state.ccy = b.dataset.ccy; render(); }));
+    })();
 
     // Az operációs rendszerhez illő letöltés kiemelése.
     const ua = navigator.userAgent;
