@@ -160,7 +160,8 @@ button {
 .btn:active:not(:disabled) {
   transform: translateY(1px);
 }
-.btn:hover:not(:disabled) {
+/* A színes gombok (primary, danger) saját hátterét a hover nem írhatja felül. */
+.btn:not(.primary, .danger, .danger-ghost):hover:not(:disabled) {
   background: var(--surface-2);
 }
 .btn.primary {
@@ -1455,6 +1456,9 @@ input.declare {
   background: var(--bad);
   border-color: var(--bad);
   color: #fff;
+}
+.btn.danger:hover:not(:disabled) {
+  filter: brightness(0.93);
 }
 .api-import {
   border-top: 1px solid var(--border);

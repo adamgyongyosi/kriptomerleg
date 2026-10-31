@@ -167,7 +167,8 @@ A `npm test` a felület-teszteket futtatja (Vitest + Testing Library, jsdom): ö
 
 ## Build
 
-- Windows + Linux egyszerre (Windowson, a Linux rész WSL-ben): `powershell -ExecutionPolicy Bypass -File scripts\build-all.ps1`
+- Helyi build: csak a Windows hordozható exe – `npm run tauri build -- --no-bundle`; a kimenet `<CARGO_TARGET_DIR>\release\kriptomerleg.exe`, ezt másold `telepito\windows\kriptomerleg_<verzió>_windows_x64-portable.exe` néven. A telepítőt, a .deb-et és az AppImage-et a GitHub Actions készíti minden pushnál.
+- Windows + Linux egyszerre, ha mégis helyben kell (Windowson, a Linux rész WSL-ben): `powershell -ExecutionPolicy Bypass -File scripts\build-all.ps1`
 - Csak Linux: `bash scripts/build-linux.sh`
 - GitHub Actions (`.github/workflows/build.yml`): minden pushnál Windows (NSIS + hordozható exe) és Linux (.deb, AppImage) build és Rust tesztek, `nix build` ellenőrzés, majd `main`-re pusholáskor automatikus GitHub Release a fájlokkal.
 - Verzió emelése: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `nix/package.nix`, valamint a `packaging/` fájljaiban; kiadás taggel: `git tag v0.3.0 && git push --tags`. Az automatikus frissítő csak akkor ajánl frissítést, ha a verziószám nő.
