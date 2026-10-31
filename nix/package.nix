@@ -7,6 +7,8 @@
   pkg-config,
   wrapGAppsHook3,
   glib-networking,
+  gsettings-desktop-schemas,
+  gtk3,
   librsvg,
   openssl,
   webkitgtk_4_1,
@@ -46,8 +48,12 @@ rustPlatform.buildRustPackage (finalAttrs: {
     wrapGAppsHook3
   ];
 
+  # A gtk3 és a gsettings-desktop-schemas GSettings-sémáit a wrapGAppsHook3 teszi
+  # az XDG_DATA_DIRS-be; nélkülük a fájlválasztó (CSV-export, import) összeomlik.
   buildInputs = [
     glib-networking
+    gsettings-desktop-schemas
+    gtk3
     librsvg
     openssl
     webkitgtk_4_1

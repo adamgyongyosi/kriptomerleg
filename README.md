@@ -165,7 +165,7 @@ inputs.kripto-ado.url = "git+ssh://git@github.com/adamgyongyosi/kripto-ado";
 environment.systemPackages = [ inputs.kripto-ado.packages.${pkgs.stdenv.hostPlatform.system}.default ];
 ```
 
-Fejlesztői környezet: `nix develop`, utána `npm install && npm run tauri dev`.
+Fejlesztői környezet: `nix develop`, utána `npm install && npm run tauri dev`. Az appot mindig a `nix develop` shellből indítsd: ez állítja be az `XDG_DATA_DIRS`-t a GTK fájlválasztó sémáira (`org.gtk.Settings.FileChooser`). Nélküle a CSV-export és az import fájlválasztója `Settings schema 'org.gtk.Settings.FileChooser' is not installed` hibával összeomlik ([#1](https://github.com/adamgyongyosi/kripto-ado/issues/1)). A `nix run` / `nix build` csomagban ezt a `wrapGAppsHook3` intézi (`gtk3` és `gsettings-desktop-schemas` a függőségek között); a CI mindkét esetet ellenőrzi.
 
 Alternatíva: az AppImage NixOS-en `appimage-run`-nal indítható (`programs.appimage.enable = true;`).
 

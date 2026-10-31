@@ -80,6 +80,16 @@ jobs:
         run: nix build .#default -L
       - name: Bináris ellenőrzése
         run: test -x result/bin/kriptomerleg
+      # A GTK fájlválasztó (CSV-export, import) séma nélkül összeomlik (#1).
+      - name: GTK fájlválasztó séma a csomagban
+        run: |
+          for d in $(grep -ao '/nix/store/[^:"'"'"' ]*gsettings-schemas/[^:"'"'"' ]*' result/bin/kriptomerleg | sort -u); do
+            ls "$d/glib-2.0/schemas" 2>/dev/null
+          done | grep -q org.gtk.Settings.FileChooser
+      - name: GTK fájlválasztó séma a fejlesztői környezetben
+        run: |
+          nix develop -c sh -c 'for d in $(echo "$XDG_DATA_DIRS" | tr : " "); do ls "$d/glib-2.0/schemas" 2>/dev/null; done' \
+            | grep -q org.gtk.Settings.FileChooser
 
   release:
     # Minden main-re pusholt változásból és minden v* tagből új release készül.
