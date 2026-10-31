@@ -213,12 +213,20 @@ jobs:
           ' "$VERSION" "$BASE"
           cat dist/latest.json
 
+      # A release-ek változtathatatlanok (Release immutability): közzététel után fájl nem
+      # tölthető fel. Ezért előbb piszkozat készül az összes fájllal, és csak utána tesszük közzé.
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.v.outputs.tag }}
           name: ${{ steps.v.outputs.name }}
           target_commitish: ${{ github.sha }}
           body_path: notes.md
-          make_latest: true
+          draft: true
           files: dist/*
           fail_on_unmatched_files: true
+
+      - name: Közzététel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
