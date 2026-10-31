@@ -1,8 +1,8 @@
 import { ReactNode, useEffect, useState } from "react";
-import { save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { api, DeclarationImpact, emptyYear, fmtFt, YearSummary } from "./api";
+import { api, DeclarationImpact, emptyYear, fmtFt, pickSave, YearSummary } from "./api";
 import { IconAlert, IconCheck, IconDownload } from "./Icons";
+import { useDialogs } from "./Dialogs";
 
 const GUIDE_URL =
   "https://nav.gov.hu/pfile/file?path=%2Fnyomtatvanyok%2Fletoltesek%2Fnyomtatvanykitolto_programok%2Fnyomtatvanykitolto_programok_nav%2F25SZJA%2F25szja-kitoltesi-utmutato";
@@ -21,6 +21,7 @@ export function Filing({
   onDeclare: (year: number, declared: boolean) => void;
 }) {
   const [impacts, setImpacts] = useState<DeclarationImpact[]>([]);
+  const dialogs = useDialogs();
   useEffect(() => {
     api.declarationImpact().then(setImpacts).catch(() => setImpacts([]));
   }, [years]);
@@ -60,16 +61,16 @@ export function Filing({
   }
 
   async function saveRows() {
-    const path = await save({ defaultPath: `${form}-kripto-sorok.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
-    if (!path) return;
     const lines = [
       "Nyomtatvány;Lap;Sor;Oszlop;Megnevezés;Érték (Ft)",
       ...filingRows().map(([lap, sor, col, label, value]) => [form, lap, sor, col, label, Math.round(value)].join(";")),
     ];
     try {
+      const path = await pickSave({ defaultPath: `${form}-kripto-sorok.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
+      if (!path) return;
       await api.saveText(path, lines.join("\r\n") + "\r\n");
     } catch (e) {
-      window.alert(String(e));
+      await dialogs.alert({ title: "Nem sikerült menteni", message: String(e) });
     }
   }
 

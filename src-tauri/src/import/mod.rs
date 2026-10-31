@@ -1,4 +1,4 @@
-//! Tőzsdei és banki exportok beolvasása (Binance, Kraken, Revolut, Bybit).
+//! Tőzsdei és banki exportok beolvasása (Binance, Kraken, Revolut, Bybit, banki kivonat).
 //!
 //! Adózási szempontból csak a fiat ↔ kripto ügyletek számítanak: amikor fiatért kriptót veszel
 //! (kiadás) vagy kriptót fiatra adsz el (bevétel). A díjak a kiadást növelik / a bevételt
@@ -8,9 +8,11 @@
 //! Az ügyleteket naponta, devizánként és irányonként összevonjuk: az adó csak az éves
 //! összegeken múlik, a napi MNB árfolyam így is pontos.
 
+mod bank;
 mod binance;
 mod bybit;
 mod kraken;
+mod kraken_api;
 mod revolut;
 
 use calamine::{Data, Reader, open_workbook_auto};
@@ -72,12 +74,23 @@ pub fn parse_file(path: &str) -> Result<Parsed, String> {
         revolut::parse(&table)
     } else if bybit::detect(&table) {
         bybit::parse(&table)
+    } else if bank::detect(&table) {
+        // Utolsóként: a banki kivonat oszlopai általánosak, a tőzsdei formátumok elsőbbséget kapnak.
+        bank::parse(&table)
     } else {
         Err(format!(
             "Nem ismerem fel a fájl formátumát. Talált oszlopok: {}",
             table.headers.iter().filter(|h| !h.is_empty()).cloned().collect::<Vec<_>>().join(", ")
         ))
     }
+}
+
+/// Kraken főkönyv lekérése API-n (csak olvasó kulccsal), majd a Ledgers exporttal azonos feldolgozás.
+pub fn fetch_kraken(key: &str, secret: &str, start: i64) -> Result<Parsed, String> {
+    let table = kraken_api::fetch_ledgers(key, secret, start)?;
+    let mut parsed = kraken::parse(&table)?;
+    parsed.format = "Kraken – API (főkönyv)";
+    Ok(parsed)
 }
 
 pub fn aggregate(source: &str, flows: &[FiatFlow]) -> Vec<ImportRow> {
@@ -422,6 +435,7 @@ mod tests {
             ("revolut-crypto-statement-regi.csv", "revolut", 3),
             ("bybit-spot-trade-history.csv", "bybit", 3),
             ("bybit-convert-history.csv", "bybit", 2),
+            ("bank-kivonat.csv", "bank", 3),
         ];
         for (file, source, expected) in cases {
             let p = parse_file(dir.join(file).to_str().unwrap()).unwrap_or_else(|e| panic!("{file}: {e}"));

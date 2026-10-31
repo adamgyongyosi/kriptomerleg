@@ -518,7 +518,20 @@ struct ImportPreview {
 /// Tőzsdei/banki export beolvasása előnézetre (még nem ment semmit).
 #[tauri::command(async)]
 fn preview_import(state: State<'_, AppState>, path: String) -> Result<ImportPreview, String> {
-    let parsed = import::parse_file(&path)?;
+    preview_parsed(&state, import::parse_file(&path)?)
+}
+
+/// Kraken főkönyv lekérése csak olvasó API kulccsal, előnézetre. A kulcsot nem tároljuk.
+#[tauri::command(async)]
+fn preview_kraken_api(state: State<'_, AppState>, key: String, secret: String, since: String) -> Result<ImportPreview, String> {
+    if key.trim().is_empty() || secret.trim().is_empty() {
+        return Err("Add meg az API kulcsot és a titkot.".into());
+    }
+    let start = parse_date(&since)?.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp();
+    preview_parsed(&state, import::fetch_kraken(&key, &secret, start)?)
+}
+
+fn preview_parsed(state: &AppState, parsed: import::Parsed) -> Result<ImportPreview, String> {
     let mut rows = import::aggregate(parsed.source, &parsed.flows);
     if rows.is_empty() {
         return Err(format!(
@@ -776,6 +789,7 @@ pub fn run() {
             preview_tax,
             import_excel,
             preview_import,
+            preview_kraken_api,
             commit_import,
             delete_by_source,
             set_loss_declared,
@@ -784,6 +798,7 @@ pub fn run() {
             data::export_xlsx,
             data::export_pdf,
             data::save_text,
+            data::file_dialog_ready,
             data::get_settings,
             data::set_setting,
             data::backup_save,

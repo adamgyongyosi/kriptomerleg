@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { ask, open, save } from "@tauri-apps/plugin-dialog";
+import { useDialogs } from "./Dialogs";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { api, BackupFile, fmtDate, Profiles, today } from "./api";
+import { api, BackupFile, fmtDate, pickOpen, pickSave, Profiles, today } from "./api";
 import { IconDownload, IconUpload } from "./Icons";
 
 interface Props {
@@ -26,6 +26,7 @@ export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSe
   const [pendingRestore, setPendingRestore] = useState<string | null>(null);
   const [newProfile, setNewProfile] = useState("");
   const [busy, setBusy] = useState(false);
+  const dialogs = useDialogs();
 
   const loadBackups = useCallback(() => {
     api.backupList().then(setBackups).catch(() => setBackups([]));
@@ -45,7 +46,7 @@ export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSe
 
   const exportTo = (kind: "csv" | "xlsx") =>
     run(async () => {
-      const path = await save({
+      const path = await pickSave({
         defaultPath: `kriptomerleg-${today()}.${kind}`,
         filters: [{ name: kind === "csv" ? "CSV" : "Excel", extensions: [kind] }],
       });
@@ -56,7 +57,7 @@ export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSe
 
   const exportPdf = () =>
     run(async () => {
-      const path = await save({
+      const path = await pickSave({
         defaultPath: `kriptoeszkoz-nyilvantartas-${year}.pdf`,
         filters: [{ name: "PDF", extensions: ["pdf"] }],
       });
@@ -68,7 +69,7 @@ export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSe
   const backupNow = () =>
     run(async () => {
       const encrypted = password.length > 0;
-      const path = await save({
+      const path = await pickSave({
         defaultPath: `kriptomerleg-mentes-${today()}.${encrypted ? "kmbackup" : "sqlite"}`,
         filters: [{ name: encrypted ? "Titkosított mentés" : "Mentés (SQLite)", extensions: [encrypted ? "kmbackup" : "sqlite"] }],
       });
@@ -79,10 +80,13 @@ export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSe
     });
 
   async function restore(path: string, pw: string | null) {
-    const ok = await ask(
-      "A jelenlegi profil adatai lecserélődnek a mentés tartalmára. Előtte a mostani állapotról automatikusan mentés készül a mentések mappájába.",
-      { title: "Visszaállítod a mentést?", kind: "warning", okLabel: "Visszaállítás", cancelLabel: "Mégse" },
-    );
+    const ok = await dialogs.confirm({
+      title: "Visszaállítod a mentést?",
+      message:
+        "A jelenlegi profil adatai lecserélődnek a mentés tartalmára. Előtte a mostani állapotról automatikusan mentés készül a mentések mappájába.",
+      okLabel: "Visszaállítás",
+      danger: true,
+    });
     if (!ok) return;
     await run(async () => {
       await api.backupRestore(path, pw);
@@ -96,7 +100,7 @@ export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSe
 
   const restoreFromFile = () =>
     run(async () => {
-      const path = await open({ multiple: false, filters: [{ name: "Kriptomérleg mentés", extensions: ["sqlite", "kmbackup"] }] });
+      const path = await pickOpen({ filters: [{ name: "Kriptomérleg mentés", extensions: ["sqlite", "kmbackup"] }] });
       if (!path) return;
       if (await api.backupIsEncrypted(path)) setPendingRestore(path);
       else await restore(path, null);
@@ -228,7 +232,7 @@ export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSe
                 className="link"
                 disabled={busy}
                 onClick={async () => {
-                  const name = window.prompt("Új név", p.name);
+                  const name = await dialogs.prompt({ title: "Profil átnevezése", defaultValue: p.name, okLabel: "Mentés" });
                   if (name && name.trim() !== p.name) await profileAction(() => api.renameProfile(p.id, name), "Átnevezve.");
                 }}
               >
@@ -239,11 +243,11 @@ export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSe
                   className="link danger"
                   disabled={busy}
                   onClick={async () => {
-                    const ok = await ask(`A(z) „${p.name}” profil törlődik. Az adatbázisa a mentések mappájába kerül.`, {
+                    const ok = await dialogs.confirm({
                       title: "Profil törlése?",
-                      kind: "warning",
+                      message: `A(z) „${p.name}” profil törlődik. Az adatbázisa a mentések mappájába kerül, onnan visszaállítható.`,
                       okLabel: "Törlés",
-                      cancelLabel: "Mégse",
+                      danger: true,
                     });
                     if (ok) await profileAction(() => api.deleteProfile(p.id), "Profil törölve.");
                   }}

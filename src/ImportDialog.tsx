@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
-import { api, fmtDate, fmtRate, ImportPreview, SOURCE_LABEL } from "./api";
+import { api, fmtDate, fmtRate, ImportPreview, pickOpen, SOURCE_LABEL } from "./api";
 import { IconAlert, IconUpload } from "./Icons";
 
 interface Props {
@@ -14,6 +13,7 @@ const HOWTO: { name: string; steps: string }[] = [
   { name: "Revolut", steps: "Kripto → … → Statement (kivonat), CSV vagy Excel" },
   { name: "Kraken", steps: "History → Export → Ledgers, CSV" },
   { name: "Bybit", steps: "Orders → Spot Order → Trade History → Export; ill. Convert → History → Export" },
+  { name: "Bank", steps: "a bank netbankjából a számlakivonat CSV/Excel exportja (Revolut, Wise, magyar bankok); a tőzsdékre küldött és onnan érkező utalásokat veszi át" },
 ];
 
 const amountFmt = (n: number) => fmtRate(n);
@@ -23,16 +23,29 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [kraken, setKraken] = useState({ open: false, key: "", secret: "", since: "2022-01-01" });
+
+  async function fetchKraken() {
+    setError(null);
+    setBusy(true);
+    try {
+      const p = await api.previewKrakenApi(kraken.key, kraken.secret, kraken.since);
+      setKraken({ open: false, key: "", secret: "", since: kraken.since });
+      setPreview(p);
+      setSelected(new Set(p.rows.filter((r) => !r.duplicate).map((r) => r.key)));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function choose() {
-    const path = await open({
-      multiple: false,
-      filters: [{ name: "Tőzsdei export", extensions: ["csv", "xlsx", "xls", "txt"] }],
-    });
-    if (!path) return;
-    setBusy(true);
     setError(null);
     try {
+      const path = await pickOpen({ filters: [{ name: "Tőzsdei export", extensions: ["csv", "xlsx", "xls", "txt"] }] });
+      if (!path) return;
+      setBusy(true);
       const p = await api.previewImport(path);
       setPreview(p);
       // A valószínűleg már rögzített (dupla) tételek alapból ki vannak hagyva.
@@ -106,6 +119,53 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
               <IconUpload /> {busy ? "Beolvasás…" : "Export fájl kiválasztása (CSV / Excel)"}
             </button>
             {error && <p className="notice warn">{error}</p>}
+            <div className="api-import">
+              {!kraken.open ? (
+                <button className="link" onClick={() => setKraken({ ...kraken, open: true })}>
+                  Kraken: lekérés közvetlenül, API kulccsal
+                </button>
+              ) : (
+                <form
+                  className="api-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    fetchKraken();
+                  }}
+                >
+                  <p className="muted small">
+                    A Krakenen (Settings → API) hozz létre kulcsot <strong>csak</strong> „Query Ledger Entries” joggal. A kulcsot
+                    és a titkot az app nem menti el, csak erre a lekérésre használja. Sok tételnél a lekérés percekig tarthat.
+                  </p>
+                  <label className="field">
+                    <span className="label">API kulcs</span>
+                    <input id="kraken-key" autoComplete="off" value={kraken.key} onChange={(e) => setKraken({ ...kraken, key: e.target.value })} />
+                  </label>
+                  <label className="field">
+                    <span className="label">Titkos kulcs (Private key)</span>
+                    <input
+                      id="kraken-secret"
+                      type="password"
+                      autoComplete="off"
+                      value={kraken.secret}
+                      onChange={(e) => setKraken({ ...kraken, secret: e.target.value })}
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="label">Ettől a naptól</span>
+                    <input id="kraken-since" type="date" value={kraken.since} onChange={(e) => setKraken({ ...kraken, since: e.target.value })} />
+                  </label>
+                  <div className="form-actions">
+                    <button type="button" className="btn ghost" onClick={() => setKraken({ ...kraken, open: false, secret: "" })}>
+                      Mégse
+                    </button>
+                    <span className="spacer" />
+                    <button className="btn primary" type="submit" disabled={busy || !kraken.key || !kraken.secret}>
+                      {busy ? "Lekérés…" : "Lekérés"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
             <div className="howto">
               <span className="side-label">Honnan töltsd le?</span>
               {HOWTO.map((h) => (

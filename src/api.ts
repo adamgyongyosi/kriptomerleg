@@ -1,4 +1,5 @@
 import { invoke as tauriInvoke, InvokeArgs } from "@tauri-apps/api/core";
+import { open as openDialog, OpenDialogOptions, save as saveDialog, SaveDialogOptions } from "@tauri-apps/plugin-dialog";
 
 /** Böngészőben (nem az asztali appban) nincs Tauri háttér. */
 export const inDesktopApp = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -129,6 +130,9 @@ export const api = {
   importExcel: (path: string) => invoke<{ imported: number; skipped: number }>("import_excel", { path }),
   exportCsv: (path: string) => invoke<void>("export_csv", { path }),
   previewImport: (path: string) => invoke<ImportPreview>("preview_import", { path }),
+  /** Kraken főkönyv csak olvasó API kulccsal; `since`: ÉÉÉÉ-HH-NN. A kulcsot nem tároljuk. */
+  previewKrakenApi: (key: string, secret: string, since: string) =>
+    invoke<ImportPreview>("preview_kraken_api", { key, secret, since }),
   commitImport: (source: string, rows: ImportRow[]) =>
     invoke<{ imported: number; skipped: number }>("commit_import", { source, rows }),
   deleteBySource: (source: string, year: number | null) => invoke<number>("delete_by_source", { source, year }),
@@ -198,6 +202,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   kraken: "Kraken",
   revolut: "Revolut",
   bybit: "Bybit",
+  bank: "Bank",
 };
 
 export function kindLabel(t: { kind: string; amount: number }): string {
@@ -270,4 +275,20 @@ export function today(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Fájlválasztó (megnyitás). Linuxon előbb ellenőrizzük, hogy a GTK fájlválasztó sémája elérhető-e,
+ * mert nélküle a program összeomlana (#1); ilyenkor érthető hibaüzenetet kapunk helyette.
+ */
+export async function pickOpen(options: Omit<OpenDialogOptions, "multiple" | "directory">): Promise<string | null> {
+  await invoke<void>("file_dialog_ready");
+  const r = await openDialog({ ...options, multiple: false, directory: false });
+  return typeof r === "string" ? r : null;
+}
+
+/** Fájlválasztó (mentés), ugyanazzal az ellenőrzéssel. */
+export async function pickSave(options: SaveDialogOptions): Promise<string | null> {
+  await invoke<void>("file_dialog_ready");
+  return saveDialog(options);
 }

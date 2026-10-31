@@ -32,6 +32,13 @@ chacha20poly1305 = "0.10"
 tauri-plugin-notification = "2"
 printpdf = "0.7"
 ttf-parser = "0.19"
+hmac = "0.12"
+sha2 = "0.10"
+base64 = "0.22"
+
+# A GTK fájlválasztó sémájának ellenőrzéséhez (a tauri gtk-rs verziójával egyezően).
+[target.'cfg(target_os = "linux")'.dependencies]
+gio = "0.18"
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
 [profile.release]

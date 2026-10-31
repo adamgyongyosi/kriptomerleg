@@ -67,6 +67,9 @@ NixOS-re lásd lent.
 | Revolut | Kripto → … → Statement (kivonat), CSV vagy Excel | `Buy` / `Sell` sorok értéke és díja (újabb formátum); `EXCHANGE` sorok fiat összege (régi formátum) |
 | Kraken | History → Export → Ledgers | `trade` / `spend` / `receive` sorok fiat összege, díj levonva |
 | Bybit | Orders → Spot Order → Trade History → Export; Convert → History → Export | Fiat párok (pl. BTCEUR) kereskedései díjjal; fiat ↔ kripto konvertálások |
+| Bank (Revolut, Wise, magyar bankok) | a netbank számlakivonat-exportja (CSV/Excel) | A kriptotőzsdékre (Binance, Kraken/Payward, Bybit, Coinbase, Bitstamp, Bitpanda, OKX, KuCoin, Crypto.com, …) küldött utalás = befizetés, onnan érkező = kivétel. Közelítés: ha van tőzsdei export, az pontosabb. |
+
+**Kraken API:** az Importálás ablakban a „Kraken: lekérés közvetlenül, API kulccsal” a főkönyvet (Ledgers) a Kraken API-ján kéri le, és ugyanúgy dolgozza fel, mint a Ledgers exportot. A kulcshoz csak „Query Ledger Entries” jog kell; a kulcsot és a titkot az app nem menti. A lekérés oldalanként 50 sort ad, a Kraken lekérési korlátja miatt oldalanként kb. 2,5 mp. A többi tőzsde API-ja (Binance, Bybit) még nincs bekötve.
 
 A formátumot az oszlopnevek alapján ismeri fel. A menük neve a tőzsdei appok frissítésével változhat.
 
@@ -191,7 +194,7 @@ inputs.kripto-ado.url = "git+ssh://git@github.com/adamgyongyosi/kripto-ado";
 environment.systemPackages = [ inputs.kripto-ado.packages.${pkgs.stdenv.hostPlatform.system}.default ];
 ```
 
-Fejlesztői környezet: `nix develop`, utána `npm install && npm run tauri dev`. Az appot mindig a `nix develop` shellből indítsd: ez állítja be az `XDG_DATA_DIRS`-t a GTK fájlválasztó sémáira (`org.gtk.Settings.FileChooser`). Nélküle a CSV-export és az import fájlválasztója `Settings schema 'org.gtk.Settings.FileChooser' is not installed` hibával összeomlik ([#1](https://github.com/adamgyongyosi/kripto-ado/issues/1)). A `nix run` / `nix build` csomagban ezt a `wrapGAppsHook3` intézi (`gtk3` és `gsettings-desktop-schemas` a függőségek között); a CI mindkét esetet ellenőrzi.
+Fejlesztői környezet: `nix develop`, utána `npm install && npm run tauri dev`. A fájlválasztó megnyitása előtt az app Linuxon ellenőrzi, hogy a séma elérhető-e; ha nem, összeomlás helyett hibaüzenetet ad. A megerősítő és beviteli ablakok az appon belül jelennek meg, nem a rendszer (GTK) üzenetablakában. Az appot mindig a `nix develop` shellből indítsd: ez állítja be az `XDG_DATA_DIRS`-t a GTK fájlválasztó sémáira (`org.gtk.Settings.FileChooser`). Nélküle a CSV-export és az import fájlválasztója `Settings schema 'org.gtk.Settings.FileChooser' is not installed` hibával összeomlik ([#1](https://github.com/adamgyongyosi/kripto-ado/issues/1)). A `nix run` / `nix build` csomagban ezt a `wrapGAppsHook3` intézi (`gtk3` és `gsettings-desktop-schemas` a függőségek között); a CI mindkét esetet ellenőrzi.
 
 Alternatíva: az AppImage NixOS-en `appimage-run`-nal indítható (`programs.appimage.enable = true;`).
 

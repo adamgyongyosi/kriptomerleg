@@ -119,6 +119,23 @@ pub fn save_text(path: String, text: String) -> Result<(), String> {
     std::fs::write(&path, [&[0xEF_u8, 0xBB, 0xBF][..], text.as_bytes()].concat()).map_err(err)
 }
 
+/// Linuxon a GTK fájlválasztó a `org.gtk.Settings.FileChooser` séma nélkül azonnal leállítja a
+/// programot (#1). Megnyitás előtt ezt ellenőrizzük, és összeomlás helyett hibaüzenetet adunk.
+#[tauri::command]
+pub fn file_dialog_ready() -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        let found = gio::SettingsSchemaSource::default()
+            .and_then(|s| s.lookup("org.gtk.Settings.FileChooser", true))
+            .is_some();
+        if !found {
+            return Err("A fájlválasztó nem nyitható meg: hiányzik a GTK „org.gtk.Settings.FileChooser” sémája.                 Telepítsd a gtk3 csomagot (Debian/Ubuntu: libgtk-3-common), NixOS-en indítsd a programot a flake                 csomagjából vagy a „nix develop” shellből."
+                .into());
+        }
+    }
+    Ok(())
+}
+
 /* ───────────── Beállítások ───────────── */
 
 #[tauri::command]

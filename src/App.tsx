@@ -1,7 +1,7 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { ask, open } from "@tauri-apps/plugin-dialog";
+import { useDialogs } from "./Dialogs";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
-import { api, inDesktopApp, deadlineReminder, emptyYear, kindLabel, SOURCE_LABEL, fmtAmount, fmtDate, fmtFt, fmtRate, fmtTax, MONTHS, Profiles, today, Tx, YearSummary } from "./api";
+import { api, pickOpen, inDesktopApp, deadlineReminder, emptyYear, kindLabel, SOURCE_LABEL, fmtAmount, fmtDate, fmtFt, fmtRate, fmtTax, MONTHS, Profiles, today, Tx, YearSummary } from "./api";
 import { Filing } from "./Filing";
 import { ImportDialog } from "./ImportDialog";
 import { GroupedColumns } from "./Chart";
@@ -36,6 +36,7 @@ function App() {
   const [importOpen, setImportOpen] = useState(false);
   const [profiles, setProfiles] = useState<Profiles | null>(null);
   const [settings, setSettings] = useState<Record<string, string>>({});
+  const dialogs = useDialogs();
 
   const notify = useCallback((text: string, error = false) => {
     setToast({ text, error });
@@ -97,11 +98,11 @@ function App() {
   }
 
   async function remove(t: Tx) {
-    const ok = await ask(`${fmtDate(t.date)}  ·  ${fmtAmount(t.amount, t.currency)}  (${fmtFt(t.huf)})`, {
+    const ok = await dialogs.confirm({
       title: "Törlöd ezt a tételt?",
-      kind: "warning",
+      message: `${fmtDate(t.date)}  ·  ${fmtAmount(t.amount, t.currency)}  (${fmtFt(t.huf)})`,
       okLabel: "Törlés",
-      cancelLabel: "Mégse",
+      danger: true,
     });
     if (!ok) return;
     try {
@@ -125,9 +126,9 @@ function App() {
 
   async function importExcel() {
     setImportOpen(false);
-    const path = await open({ multiple: false, filters: [{ name: "Excel", extensions: ["xlsx", "xlsm", "xls"] }] });
-    if (!path) return;
     try {
+      const path = await pickOpen({ filters: [{ name: "Excel", extensions: ["xlsx", "xlsm", "xls"] }] });
+      if (!path) return;
       const r = await api.importExcel(path);
       notify(`Import kész: ${r.imported} új tétel${r.skipped ? `, ${r.skipped} már megvolt` : ""}.`);
       await reload();
@@ -254,11 +255,11 @@ function App() {
             onDelete={remove}
             onDeleteSource={async (source) => {
               const label = SOURCE_LABEL[source] ?? source;
-              const ok = await ask(`Az összes ${label} forrásból importált ${year}. évi tétel törlődik.`, {
+              const ok = await dialogs.confirm({
                 title: `${label} tételek törlése?`,
-                kind: "warning",
+                message: `Az összes ${label} forrásból importált ${year}. évi tétel törlődik.`,
                 okLabel: "Törlés",
-                cancelLabel: "Mégse",
+                danger: true,
               });
               if (!ok) return;
               try {
@@ -391,7 +392,7 @@ function Overview(props: {
               <h2>Üdv! Kezdjük az adatokkal.</h2>
               <p className="muted">
                 Rögzítsd jobb oldalt az első befizetést, vagy importáld a tőzsdei exportodat (Binance, Revolut,
-                Kraken, Bybit), illetve a régi Excel táblázatodat.
+                Kraken, Bybit), a banki kivonatodat vagy a régi Excel táblázatodat.
               </p>
             </div>
             <button className="btn primary" onClick={props.onImport}>

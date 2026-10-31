@@ -12,6 +12,7 @@ Kitalált adatokkal kitöltött minták minden támogatott formátumhoz. Az appb
 | [`revolut-crypto-statement-regi.csv`](revolut-crypto-statement-regi.csv) | Revolut – kripto kivonat (régebbi) | `EXCHANGE` sorok „Fiat amount (inc. fees)” oszloppal; `TRANSFER` és `DECLINED` sor (kimarad) | 3 |
 | [`bybit-spot-trade-history.csv`](bybit-spot-trade-history.csv) | Bybit – Orders → Spot Order → Trade History | BTCEUR / ETHEUR vétel kriptóban fizetett díjjal; BTCUSDT (kimarad); eladás EUR díjjal | 3 |
 | [`bybit-convert-history.csv`](bybit-convert-history.csv) | Bybit – Convert history | EUR → BTC, ETH → EUR; USDT → BTC (kimarad) | 2 |
+| [`bank-kivonat.csv`](bank-kivonat.csv) | Banki kivonat (Revolut számla) | „To BINANCE”, „Transfer to Kraken” kiutalás (befizetés), „Payment from Payward” (Kraken) jóváírás (kivétel); kártyás vásárlás, feltöltés és visszafordított utalás (kimarad) | 3 |
 | [`sajat-excel-nyilvantartas.xlsx`](sajat-excel-nyilvantartas.xlsx) | Saját, régi Excel (Importálás → „Excel import”) | Évszám nevű lapok (2025, 2026), A oszlop dátum, B oszlop forint; negatív = kivétel; a „Leírás” lap kimarad | 9 |
 
 ## A saját fájlod szerkezete
