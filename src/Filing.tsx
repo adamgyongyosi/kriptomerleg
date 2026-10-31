@@ -1,6 +1,6 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { emptyYear, fmtFt, YearSummary } from "./api";
+import { api, DeclarationImpact, emptyYear, fmtFt, YearSummary } from "./api";
 import { IconAlert, IconCheck } from "./Icons";
 
 const GUIDE_URL =
@@ -10,7 +10,19 @@ const NAV_INFO_URL = "https://nav.gov.hu/ado/szja/a-kriptougyletek-jovedelmenek-
 const VERIFIED_FORM_YEAR = 2025;
 
 /** Bevallási segéd: mit hova kell írni az SZJA bevallásban. */
-export function Filing({ year, years }: { year: number; years: YearSummary[] }) {
+export function Filing({
+  year,
+  years,
+  onDeclare,
+}: {
+  year: number;
+  years: YearSummary[];
+  onDeclare: (year: number, declared: boolean) => void;
+}) {
+  const [impacts, setImpacts] = useState<DeclarationImpact[]>([]);
+  useEffect(() => {
+    api.declarationImpact().then(setImpacts).catch(() => setImpacts([]));
+  }, [years]);
   const get = (y: number) => years.find((s) => s.year === y) ?? emptyYear(y);
   const c = get(year);
   const form = `${String(year).slice(2)}SZJA`;
@@ -74,6 +86,11 @@ export function Filing({ year, years }: { year: number; years: YearSummary[] }) 
               </>
             ) : (
               <p className="muted">Az eredmény 0 Ft, ide nem kell semmit írni.</p>
+            )}
+            {c.smallExemptHuf > 0 && (
+              <p className="muted small">
+                A kisértékű ügyletek {fmtFt(c.smallExemptHuf)} bevétele nélkül számolva (67/C. § (2)).
+              </p>
             )}
             {c.carriedInHuf !== 0 && (
               <p className="muted small">
@@ -151,6 +168,8 @@ export function Filing({ year, years }: { year: number; years: YearSummary[] }) 
         </>
       )}
 
+      {impacts.length > 0 && <SelfRevision impacts={impacts} onDeclare={onDeclare} />}
+
       <section className="explainer">
         <h2>Jó tudni</h2>
         <ul>
@@ -170,6 +189,67 @@ export function Filing({ year, years }: { year: number; years: YearSummary[] }) 
         <p className="muted small">Tájékoztató segédlet, nem adótanácsadás. Bizonytalan esetben kérdezz könyvelőt.</p>
       </section>
     </div>
+  );
+}
+
+/** Önellenőrzés-segéd: mely korábbi évek vesztesége maradt ki a bevallásból, és mit érne a pótlása. */
+function SelfRevision(props: { impacts: DeclarationImpact[]; onDeclare: (year: number, declared: boolean) => void }) {
+  const forms = props.impacts.map((i) => `${String(i.year).slice(2)}SZJA`).join(", ");
+  return (
+    <section className="panel step self-revision">
+      <div className="step-head">
+        <span className="step-n warn">!</span>
+        <div>
+          <h2>Kimaradt veszteség pótlása</h2>
+          <span className="muted small">önellenőrzés-segéd</span>
+        </div>
+      </div>
+      <div className="step-body">
+        <p className="step-intro">
+          Ezeknek az éveknek a vesztesége nincs bevallottként jelölve, ezért az app nem vonja le. Ha a bevallásból kimaradt,
+          az adott évi nyomtatványon pótolható, és utána a későbbi évek adójából levonható.
+        </p>
+        {props.impacts.map((i) => {
+          const form = `${String(i.year).slice(2)}SZJA`;
+          return (
+            <div key={i.year} className="revision-year">
+              <div className="revision-head">
+                <strong>{i.year}</strong>
+                <span className="muted">
+                  {fmtFt(i.lossHuf)} veszteség · {form} · pótolható {i.year + 6}. december 31-ig
+                </span>
+              </div>
+              <Row line="164." col="a" label={`${form}-04-es lap: ${i.year}. évi veszteség`} value={i.lossHuf} />
+              {i.saving > 0 ? (
+                <p className="step-note good-text">
+                  <IconCheck /> Pótlás után a későbbi évek adója összesen {fmtFt(i.saving)}-tal kevesebb (vagy ennyivel több jár
+                  vissza).
+                </p>
+              ) : (
+                <p className="muted small">
+                  A mostani adatok alapján a pótlás most nem csökkenti az adót, de a veszteség később, nyereséges évben levonható.
+                </p>
+              )}
+              <button className="btn" onClick={() => props.onDeclare(i.year, true)}>
+                <IconCheck /> Bevallottam / pótoltam
+              </button>
+            </div>
+          );
+        })}
+        <ul className="revision-steps">
+          <li>
+            Az adott év nyomtatványát kell használni ({forms}), ÁNYK-ban vagy a NAV webes kitöltőjében, az eredeti bevallás
+            összes adatával.
+          </li>
+          <li>
+            A főlapon a bevallás jellege <strong>„O” (önellenőrzés)</strong> vagy <strong>„H” (helyesbítés)</strong>. Mivel a
+            veszteség a fizetendő adót nem változtatja, a kitöltési útmutató szerint inkább helyesbítés; ezt a NAV-nál (1819)
+            vagy könyvelőnél kérdezd meg. Adókülönbözet nélkül önellenőrzési pótlék nem keletkezik.
+          </li>
+          <li>Határidő: az elévülésig, vagyis a bevallási év végétől számított 5 évig.</li>
+        </ul>
+      </div>
+    </section>
   );
 }
 

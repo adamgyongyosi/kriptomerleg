@@ -1,15 +1,29 @@
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { ask, open, save } from "@tauri-apps/plugin-dialog";
-import { api, inDesktopApp, emptyYear, kindLabel, SOURCE_LABEL, fmtAmount, fmtDate, fmtFt, fmtRate, fmtTax, MONTHS, today, Tx, YearSummary } from "./api";
+import { ask, open } from "@tauri-apps/plugin-dialog";
+import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
+import { api, inDesktopApp, deadlineReminder, emptyYear, kindLabel, SOURCE_LABEL, fmtAmount, fmtDate, fmtFt, fmtRate, fmtTax, MONTHS, Profiles, today, Tx, YearSummary } from "./api";
 import { Filing } from "./Filing";
 import { ImportDialog } from "./ImportDialog";
 import { GroupedColumns } from "./Chart";
 import { EntryForm } from "./EntryForm";
-import { IconAlert, IconChart, IconCheck, IconDoc, IconDownload, IconHome, IconList, IconLogo, IconTrash, IconUpload } from "./Icons";
+import { DataPage } from "./DataPage";
+import { IconAlert, IconBell, IconChart, IconCheck, IconData, IconDoc, IconHome, IconList, IconLogo, IconTrash, IconUpload } from "./Icons";
 import "./App.css";
 
 const CURRENT_YEAR = new Date().getFullYear();
-type Page = "overview" | "transactions" | "years" | "filing";
+type Page = "overview" | "transactions" | "years" | "filing" | "data";
+
+/** Egyszer, rendszerértesítésként is jelezzük a közelgő bevallási határidőt. */
+async function notifyDeadline(years: YearSummary[], settings: Record<string, string>) {
+  const r = deadlineReminder(years);
+  if (!r || settings.reminders === "off") return;
+  const key = `emlekezteto:${r.year}:${r.stage}`;
+  if (settings[key]) return;
+  let granted = await isPermissionGranted();
+  if (!granted) granted = (await requestPermission()) === "granted";
+  if (granted) sendNotification({ title: "Kriptomérleg – bevallási határidő", body: r.text });
+  await api.setSetting(key, today());
+}
 
 function App() {
   const [page, setPage] = useState<Page>("overview");
@@ -20,6 +34,8 @@ function App() {
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [profiles, setProfiles] = useState<Profiles | null>(null);
+  const [settings, setSettings] = useState<Record<string, string>>({});
 
   const notify = useCallback((text: string, error = false) => {
     setToast({ text, error });
@@ -27,15 +43,42 @@ function App() {
   }, []);
 
   const reload = useCallback(async () => {
-    const [s, t] = await Promise.all([api.summary(), api.listTransactions(year)]);
+    const [s, t, st, p] = await Promise.all([api.summary(), api.listTransactions(year), api.getSettings(), api.listProfiles()]);
     setYears(s);
     setTxs(t);
+    setSettings(st);
+    setProfiles(p);
     setLoaded(true);
   }, [year]);
 
   useEffect(() => {
     reload().catch((e) => notify(String(e), true));
   }, [reload, notify]);
+
+  // Határidő-emlékeztető az első betöltés után (profilonként egyszer szakaszonként).
+  useEffect(() => {
+    if (loaded) notifyDeadline(years, settings).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, profiles?.current]);
+
+  async function setSetting(key: string, value: string) {
+    try {
+      await api.setSetting(key, value);
+      setSettings((s) => ({ ...s, [key]: value }));
+    } catch (err) {
+      notify(String(err), true);
+    }
+  }
+
+  async function switchProfile(id: string) {
+    try {
+      setProfiles(await api.switchProfile(id));
+      setEditing(null);
+      await reload();
+    } catch (err) {
+      notify(String(err), true);
+    }
+  }
 
   const current = useMemo(() => years.find((y) => y.year === year) ?? emptyYear(year), [years, year]);
   const yearOptions = useMemo(() => {
@@ -93,23 +136,14 @@ function App() {
     }
   }
 
-  async function exportCsv() {
-    const path = await save({ defaultPath: `kripto-ado-${today()}.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
-    if (!path) return;
-    try {
-      await api.exportCsv(path);
-      notify("Exportálva.");
-    } catch (err) {
-      notify(String(err), true);
-    }
-  }
-
   const nav: { id: Page; label: string; icon: ReactNode }[] = [
     { id: "overview", label: "Áttekintés", icon: <IconHome /> },
     { id: "transactions", label: "Tételek", icon: <IconList /> },
     { id: "years", label: "Évek és adó", icon: <IconChart /> },
     { id: "filing", label: "Bevallási segéd", icon: <IconDoc /> },
+    { id: "data", label: "Adatok és mentés", icon: <IconData /> },
   ];
+  const reminder = settings.reminders === "off" ? null : deadlineReminder(years);
 
   return (
     <div className="shell">
@@ -121,6 +155,19 @@ function App() {
             <span>kriptóadó, helyben</span>
           </div>
         </div>
+
+        {profiles && profiles.profiles.length > 1 && (
+          <label className="profile-switch">
+            <span className="side-label">Profil</span>
+            <select id="profile-switch" value={profiles.current} onChange={(e) => switchProfile(e.target.value)}>
+              {profiles.profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <nav>
           {nav.map((n) => (
@@ -146,9 +193,6 @@ function App() {
           <button onClick={() => setImportOpen(true)}>
             <IconUpload /> Importálás
           </button>
-          <button onClick={exportCsv}>
-            <IconDownload /> Export CSV
-          </button>
         </div>
       </aside>
 
@@ -161,6 +205,30 @@ function App() {
               indítsd a <strong>Kriptomérleg</strong> programot a Start menüből vagy a <code>kriptomerleg.exe</code> fájlból.
             </span>
           </div>
+        )}
+        {reminder && (page === "overview" || page === "filing") && (
+          <div className="notice warn deadline-notice">
+            <IconBell />
+            <span>{reminder.text}</span>
+            {page === "overview" && (
+              <button className="link" onClick={() => { setYear(reminder.year); setPage("filing"); }}>
+                Bevallási segéd
+              </button>
+            )}
+          </div>
+        )}
+        {page === "data" && (
+          <DataPage
+            profiles={profiles}
+            settings={settings}
+            onChanged={async () => {
+              setEditing(null);
+              await reload();
+            }}
+            onProfiles={setProfiles}
+            onSetting={setSetting}
+            notify={notify}
+          />
         )}
         {page === "overview" && (
           <Overview
@@ -202,8 +270,20 @@ function App() {
             }}
           />
         )}
-        {page === "years" && <Years years={years} selected={year} onSelect={setYear} onDeclare={declareLoss} />}
-        {page === "filing" && <Filing year={year} years={years} />}
+        {page === "years" && (
+          <Years
+            years={years}
+            selected={year}
+            onSelect={setYear}
+            onDeclare={declareLoss}
+            smallValueOn={settings.kiserteku === "on"}
+            onSmallValue={async (on) => {
+              await setSetting("kiserteku", on ? "on" : "off");
+              await reload();
+            }}
+          />
+        )}
+        {page === "filing" && <Filing year={year} years={years} onDeclare={declareLoss} />}
       </main>
 
       {editing && (
@@ -344,7 +424,12 @@ function Overview(props: {
 
         <section className="stats">
           <Stat label="Befizetve" value={fmtFt(c.depositsHuf)} swatch="--series-1" />
-          <Stat label="Kivéve" value={fmtFt(c.withdrawalsHuf)} swatch="--series-2" />
+          <Stat
+            label="Kivéve"
+            value={fmtFt(c.withdrawalsHuf)}
+            swatch="--series-2"
+            hint={c.smallExemptHuf ? `ebből ${fmtFt(c.smallExemptHuf)} kisértékű ügylet, nem számít` : undefined}
+          />
           <Stat
             label={c.resultHuf >= 0 ? "Nyereség" : "Veszteség"}
             value={fmtFt(Math.abs(c.resultHuf))}
@@ -604,8 +689,11 @@ function Years(props: {
   selected: number;
   onSelect: (y: number) => void;
   onDeclare: (year: number, declared: boolean) => void;
+  smallValueOn: boolean;
+  onSmallValue: (on: boolean) => void;
 }) {
   const { years } = props;
+  const smallYears = years.filter((y) => y.smallExemptAvailable > 0);
   return (
     <div className="page">
       <header className="page-head">
@@ -628,6 +716,27 @@ function Years(props: {
               extra={(i) => ({ label: "Fizetendő adó", value: fmtTax(years[i].taxDue) })}
             />
           </section>
+
+          {(smallYears.length > 0 || props.smallValueOn) && (
+            <section className={`notice ${props.smallValueOn ? "ok" : "warn"} small-value`}>
+              <input
+                id="small-value"
+                type="checkbox"
+                className="declare"
+                checked={props.smallValueOn}
+                onChange={(e) => props.onSmallValue(e.target.checked)}
+              />
+              <label htmlFor="small-value">
+                <strong>Kisértékű ügyletek figyelmen kívül hagyása</strong> (Szja tv. 67/C. § (2)). Nem kell bevételt
+                megállapítani abból az ügyletből, amelynek bevétele legfeljebb a minimálbér 10%-a (2025-ben 29 080 Ft), ha aznap
+                nem volt más bevételt hozó ügylet, és az ilyen bevételek éves összege nem haladja meg a minimálbért. A
+                vételek ettől még kiadásként számítanak.
+                {smallYears.length > 0 && (
+                  <span> Érintett: {smallYears.map((y) => `${y.year}: ${fmtFt(y.smallExemptAvailable)}`).join(", ")}.</span>
+                )}
+              </label>
+            </section>
+          )}
 
           <section className="panel flush">
             <div className="table-wrap">
@@ -723,6 +832,11 @@ function Years(props: {
           <li>
             <strong>EUR, USD, GBP, CHF</strong> tételeknél a teljesítés napján érvényes MNB árfolyam számít; hétvégén és
             ünnepnap az utolsó közzétett.
+          </li>
+          <li>
+            <strong>Kisértékű ügylet:</strong> a minimálbér 10%-áig terjedő, napi egyetlen bevétel kihagyható, ha az ilyenek
+            éves összege a minimálbért nem haladja meg. Alapból ki van kapcsolva; a táblázat fölött kapcsolható be, ha van
+            érintett tétel. Importnál a napi összevont sor ügyletszáma dönt (több eladás egy napon nem kisértékű).
           </li>
           <li>
             <strong>Kriptóval fizetés</strong> (áru, szolgáltatás) bevételnek számít, mint egy kivétel: a forintértéke az éves

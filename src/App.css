@@ -1314,3 +1314,126 @@ input.declare {
   padding: 10px 16px 14px;
   margin: 0;
 }
+
+/* ───────────── Adatok és mentés ───────────── */
+.profile-switch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 4px;
+}
+.profile-switch select {
+  width: 100%;
+}
+.deadline-notice {
+  align-items: center;
+  margin-bottom: 18px;
+}
+.deadline-notice span {
+  flex: 1;
+}
+.data-page .panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.data-page .panel h2 {
+  margin: 0;
+}
+.data-page .panel > p {
+  margin: 0;
+  max-width: 72ch;
+}
+.button-row,
+.backup-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.backup-row .field {
+  min-width: 220px;
+}
+.restore-password {
+  align-items: center;
+  flex-wrap: wrap;
+}
+.restore-password input {
+  width: 200px;
+}
+.backup-list,
+.profile-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+.backup-list li,
+.profile-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--border);
+}
+.backup-list li span:first-child {
+  flex: 1;
+}
+.profile-list .spacer {
+  flex: 1;
+}
+.link.danger {
+  color: var(--bad);
+}
+.toggle-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 72ch;
+}
+.toggle-row input {
+  margin-top: 3px;
+}
+.small-value {
+  align-items: flex-start;
+}
+.small-value input {
+  margin-top: 2px;
+}
+.small-value label {
+  cursor: pointer;
+  line-height: 1.5;
+}
+.step-n.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.revision-year {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.revision-year .btn {
+  align-self: flex-start;
+}
+.revision-head {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.good-text {
+  color: var(--good);
+}
+.revision-steps {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ink-2);
+}

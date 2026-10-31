@@ -103,6 +103,18 @@ export interface YearSummary {
   carriedInHuf: number;
   /** A veszteséget bevallották (csak így vonható le később). */
   lossDeclared: boolean;
+  /** Kisértékű ügyletként figyelmen kívül hagyott bevétel (bekapcsolt beállításnál). */
+  smallExemptHuf: number;
+  /** Ennyi bevétel lenne kisértékű ügyletként mentesíthető. */
+  smallExemptAvailable: number;
+}
+
+/** Egy bevallatlan veszteséges év pótlásának hatása. */
+export interface DeclarationImpact {
+  year: number;
+  lossHuf: number;
+  /** Ennyivel kevesebb adó a későbbi években, ha a veszteséget pótlólag bevallják. */
+  saving: number;
 }
 
 export const api = {
@@ -121,7 +133,57 @@ export const api = {
     invoke<{ imported: number; skipped: number }>("commit_import", { source, rows }),
   deleteBySource: (source: string, year: number | null) => invoke<number>("delete_by_source", { source, year }),
   setLossDeclared: (year: number, declared: boolean) => invoke<void>("set_loss_declared", { year, declared }),
+  declarationImpact: () => invoke<DeclarationImpact[]>("declaration_impact"),
+  exportXlsx: (path: string) => invoke<void>("export_xlsx", { path }),
+  getSettings: () => invoke<Record<string, string>>("get_settings"),
+  setSetting: (key: string, value: string) => invoke<void>("set_setting", { key, value }),
+  backupSave: (path: string, password: string | null) => invoke<void>("backup_save", { path, password }),
+  backupList: () => invoke<BackupFile[]>("backup_list"),
+  backupDir: () => invoke<string>("backup_dir"),
+  backupIsEncrypted: (path: string) => invoke<boolean>("backup_is_encrypted", { path }),
+  backupRestore: (path: string, password: string | null) => invoke<void>("backup_restore", { path, password }),
+  listProfiles: () => invoke<Profiles>("list_profiles"),
+  createProfile: (name: string) => invoke<Profiles>("create_profile", { name }),
+  switchProfile: (id: string) => invoke<Profiles>("switch_profile", { id }),
+  renameProfile: (id: string, name: string) => invoke<Profiles>("rename_profile", { id, name }),
+  deleteProfile: (id: string) => invoke<Profiles>("delete_profile", { id }),
 };
+
+export interface BackupFile {
+  path: string;
+  name: string;
+  /** A mentés napja, ÉÉÉÉ-HH-NN. */
+  date: string;
+  size: number;
+}
+
+export interface Profiles {
+  current: string;
+  profiles: { id: string; name: string }[];
+}
+
+/**
+ * Határidő-figyelmeztetés az előző adóévre március 15. (eSZJA tervezet) és május 20. (bevallás és
+ * befizetés) között. `stage`: melyik emlékeztetőnél tartunk (egyszer küldjük el rendszerértesítésként).
+ */
+export function deadlineReminder(years: YearSummary[], now = new Date()): { year: number; stage: string; text: string } | null {
+  const y = now.getFullYear();
+  const start = new Date(y, 2, 15);
+  const end = new Date(y, 4, 20, 23, 59);
+  if (now < start || now > end) return null;
+  const prev = years.find((s) => s.year === y - 1);
+  if (!prev || prev.preRegime) return null;
+  const stage = now >= new Date(y, 4, 10) ? "majus" : "marcius";
+  let text: string;
+  if (prev.taxDue > 0) text = `${y - 1}. évi kriptoadó: ${fmtFt(prev.taxDue)}. A bevallás és a befizetés határideje május 20.`;
+  else if (prev.taxDue < 0)
+    text = `${y - 1}: ${fmtFt(-prev.taxDue)} adókiegyenlítés jár. Május 20-ig a bevallásban (06-os lap, C lap 75. sor) érvényesítsd.`;
+  else if (prev.resultHuf < 0)
+    text = `${y - 1}. évi kriptoveszteség: ${fmtFt(-prev.resultHuf)}. Május 20-ig vallsd be (164. sor „a”), különben később nem vonható le.`;
+  else if (prev.resultHuf > 0) text = `${y - 1}: a kriptónyereséget május 20-ig a bevallásban is fel kell tüntetni (164. sor).`;
+  else return null;
+  return { year: y - 1, stage, text };
+}
 
 const huf = new Intl.NumberFormat("hu-HU", { maximumFractionDigits: 0 });
 const dec = new Intl.NumberFormat("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -190,6 +252,8 @@ export const emptyYear = (year: number): YearSummary => ({
   preRegime: year < 2022,
   carriedInHuf: 0,
   lossDeclared: true,
+  smallExemptHuf: 0,
+  smallExemptAvailable: 0,
 });
 
 export const MONTHS = ["jan", "febr", "márc", "ápr", "máj", "jún", "júl", "aug", "szept", "okt", "nov", "dec"];

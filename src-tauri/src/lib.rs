@@ -1,3 +1,5 @@
+mod backup;
+mod data;
 mod excel;
 mod import;
 mod mnb;
@@ -8,13 +10,38 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, State};
 
 type Db = Arc<Mutex<Connection>>;
 
 struct AppState {
+    /// Az aktív profil adatbázisa; profilváltáskor a kapcsolat cserélődik.
     db: Db,
+    /// Az app adatkönyvtára (adatbázisok, mentések, profilok).
+    dir: PathBuf,
+    profile: Mutex<String>,
+}
+
+/// Az alapértelmezett profil azonosítója; adatbázisa a régi helyen marad (`kripto-ado.sqlite`).
+const DEFAULT_PROFILE: &str = "sajat";
+
+fn db_path(dir: &Path, profile: &str) -> PathBuf {
+    if profile == DEFAULT_PROFILE {
+        dir.join("kripto-ado.sqlite")
+    } else {
+        dir.join("profiles").join(format!("{profile}.sqlite"))
+    }
+}
+
+fn open_db(path: &Path) -> Result<Connection, String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(err)?;
+    }
+    let conn = Connection::open(path).map_err(err)?;
+    init_db(&conn).map_err(err)?;
+    Ok(conn)
 }
 
 #[derive(Serialize)]
@@ -98,6 +125,10 @@ fn init_db(conn: &Connection) -> rusqlite::Result<()> {
         CREATE TABLE IF NOT EXISTS loss_declarations (
             year     INTEGER PRIMARY KEY,
             declared INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS settings (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         );",
     )?;
     let version: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
@@ -111,6 +142,13 @@ fn init_db(conn: &Connection) -> rusqlite::Result<()> {
             UPDATE transactions SET source = 'excel' WHERE note = 'Excel import';
             UPDATE transactions SET kind = CASE WHEN amount > 0 THEN 'deposit' ELSE 'withdrawal' END WHERE kind = '';
             PRAGMA user_version = 1;",
+        )?;
+    }
+    if version < 2 {
+        // Importált napi soroknál az összevont ügyletek száma (a kisértékű ügylet szabályához).
+        conn.execute_batch(
+            "ALTER TABLE transactions ADD COLUMN trades INTEGER NOT NULL DEFAULT 1;
+            PRAGMA user_version = 2;",
         )?;
     }
     Ok(())
@@ -225,6 +263,15 @@ fn compute_summary(conn: &Connection) -> Result<Vec<tax::YearSummary>, String> {
 }
 
 fn compute_summary_with(conn: &Connection, extra: Option<Hypothetical>) -> Result<Vec<tax::YearSummary>, String> {
+    compute_summary_inner(conn, extra, |_| {})
+}
+
+/// `adjust_undeclared`: a bevallatlan évek halmazának módosítása (pl. „mi lenne, ha bevallanám”).
+fn compute_summary_inner(
+    conn: &Connection,
+    extra: Option<Hypothetical>,
+    adjust_undeclared: impl FnOnce(&mut BTreeSet<i32>),
+) -> Result<Vec<tax::YearSummary>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT CAST(substr(date, 1, 4) AS INTEGER),
@@ -242,9 +289,79 @@ fn compute_summary_with(conn: &Connection, extra: Option<Hypothetical>) -> Resul
         let t = totals.entry(e.year).or_default();
         if e.huf > 0 { t.0 += e.huf } else { t.1 -= e.huf }
     }
+    // Kisértékű ügyletek (67/C. § (2)): bekapcsolva a mentesíthető bevétel kimarad az eredményből.
+    let small = small_value_exempt(conn, extra.and_then(|e| e.exclude_id))?;
+    let apply_small = setting(conn, "kiserteku")?.as_deref() == Some("on");
+    if apply_small {
+        for (y, exempt) in &small {
+            if let Some(t) = totals.get_mut(y) {
+                t.1 -= exempt;
+            }
+        }
+    }
     let today = Local::now().date_naive();
-    let undeclared = undeclared_years(conn, &totals, today)?;
-    Ok(tax::summarize(&totals, today.year(), &undeclared))
+    let mut undeclared = undeclared_years(conn, &totals, today)?;
+    adjust_undeclared(&mut undeclared);
+    let mut out = tax::summarize(&totals, today.year(), &undeclared);
+    for s in &mut out {
+        s.small_exempt_available = small.get(&s.year).copied().unwrap_or(0);
+        if apply_small {
+            s.small_exempt_huf = s.small_exempt_available;
+            // A kimutatott kivétel a teljes összeg marad; az eredményből hiányzik a mentes rész.
+            s.withdrawals_huf += s.small_exempt_huf;
+        }
+    }
+    Ok(out)
+}
+
+fn setting(conn: &Connection, key: &str) -> Result<Option<String>, String> {
+    conn.query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| r.get(0)).optional().map_err(err)
+}
+
+/// Évente a kisértékű ügyletként mentesíthető bevétel. Csak az a nap számít, amelyen egyetlen
+/// bevételt hozó ügylet volt (importnál a napi összevont sor ügyletszáma alapján).
+fn small_value_exempt(conn: &Connection, exclude_id: Option<i64>) -> Result<BTreeMap<i32, i64>, String> {
+    let days: Vec<tax::SaleDay> = conn
+        .prepare(
+            "SELECT CAST(substr(date, 1, 4) AS INTEGER), SUM(trades), SUM(-huf)
+             FROM transactions WHERE huf < 0 AND id IS NOT ?1 GROUP BY date",
+        )
+        .and_then(|mut s| {
+            s.query_map([exclude_id], |r| Ok(tax::SaleDay { year: r.get(0)?, trades: r.get(1)?, huf: r.get(2)? }))?
+                .collect()
+        })
+        .map_err(err)?;
+    Ok(tax::small_value_exempt(&days))
+}
+
+/// Egy bevallatlan veszteséges év pótlásának hatása.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DeclarationImpact {
+    year: i32,
+    loss_huf: i64,
+    /// Ennyivel kevesebb adó (vagy több visszajáró) a későbbi években, ha a veszteséget bevallják.
+    saving: i64,
+}
+
+/// Önellenőrzés-segéd: a bevallatlan veszteséges évek, és mennyit érne a pótlásuk.
+#[tauri::command]
+fn declaration_impact(state: State<'_, AppState>) -> Result<Vec<DeclarationImpact>, String> {
+    let conn = state.db.lock().unwrap();
+    let base = compute_summary(&conn)?;
+    let total_after = |s: &[tax::YearSummary], y: i32| s.iter().filter(|x| x.year > y).map(|x| x.tax_due).sum::<i64>();
+    let mut out = Vec::new();
+    for y in base.iter().filter(|s| s.loss_credit > 0 && !s.loss_declared) {
+        let alt = compute_summary_inner(&conn, None, |u| {
+            u.remove(&y.year);
+        })?;
+        out.push(DeclarationImpact {
+            year: y.year,
+            loss_huf: -y.result_huf,
+            saving: total_after(&base, y.year) - total_after(&alt, y.year),
+        });
+    }
+    Ok(out)
 }
 
 /// Azok az évek, amelyek veszteségét nem vallották be. Ha a felhasználó nem jelölte, a már lejárt
@@ -516,7 +633,7 @@ async fn commit_import(state: State<'_, AppState>, source: String, rows: Vec<imp
             .map_err(err)?;
         conn.execute(
             UPSERT_IMPORTED,
-            params![r.date, r.currency, amount, rate, rate_source, rate_date, huf, note, source, r.kind, r.fee, r.key],
+            params![r.date, r.currency, amount, rate, rate_source, rate_date, huf, note, source, r.kind, r.fee, r.key, r.count as i64],
         )
         .map_err(err)?;
         if exists { updated += 1 } else { imported += 1 }
@@ -525,12 +642,12 @@ async fn commit_import(state: State<'_, AppState>, source: String, rows: Vec<imp
 }
 
 const UPSERT_IMPORTED: &str = "INSERT INTO transactions
-        (date, currency, amount, rate, rate_source, rate_date, huf, note, source, kind, fee, external_id)
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+        (date, currency, amount, rate, rate_source, rate_date, huf, note, source, kind, fee, external_id, trades)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
     ON CONFLICT(external_id) DO UPDATE SET
         date = excluded.date, currency = excluded.currency, amount = excluded.amount, rate = excluded.rate,
         rate_source = excluded.rate_source, rate_date = excluded.rate_date, huf = excluded.huf,
-        note = excluded.note, kind = excluded.kind, fee = excluded.fee";
+        note = excluded.note, kind = excluded.kind, fee = excluded.fee, trades = excluded.trades";
 
 fn capitalize(s: &str) -> String {
     let mut c = s.chars();
@@ -549,6 +666,26 @@ fn delete_by_source(state: State<'_, AppState>, source: String, year: Option<i32
             params![source, year.map(|y| y.to_string())],
         )
         .map_err(err)
+}
+
+fn kind_label(kind: &str, amount: f64) -> &'static str {
+    match kind {
+        "buy" => "Vétel",
+        "sell" => "Eladás",
+        "payment" => "Fizetés kriptóval",
+        _ if amount > 0.0 => "Befizetés",
+        _ => "Kivétel",
+    }
+}
+
+fn year_remark(y: &tax::YearSummary) -> &'static str {
+    if y.pre_regime {
+        "2022-be számít"
+    } else if y.loss_credit > 0 && !y.loss_declared {
+        "veszteség nincs bevallva"
+    } else {
+        ""
+    }
 }
 
 fn hu_num(x: f64, decimals: usize) -> String {
@@ -574,13 +711,7 @@ fn export_csv(state: State<'_, AppState>, path: String) -> Result<(), String> {
                 f,
                 "{};{};{};{};{};{};{};{};{};{}",
                 t.date,
-                match t.kind.as_str() {
-                    "buy" => "Vétel",
-                    "sell" => "Eladás",
-                    "payment" => "Fizetés kriptóval",
-                    _ if t.amount > 0.0 => "Befizetés",
-                    _ => "Kivétel",
-                },
+                kind_label(&t.kind, t.amount),
                 t.source,
                 t.currency,
                 hu_num(t.amount, 2),
@@ -595,13 +726,7 @@ fn export_csv(state: State<'_, AppState>, path: String) -> Result<(), String> {
         writeln!(f, "Éves összesítő")?;
         writeln!(f, "Év;Befizetve (Ft);Kivéve (Ft);Eredmény (Ft);Adó 15% (Ft);Adókiegyenlítés (Ft);Fizetendő adó, negatív = visszajár (Ft);Veszteség 15%-a (Ft);Ebből fel nem használt (Ft);Megjegyzés")?;
         for y in &years {
-            let remark = if y.pre_regime {
-                "2022-be számít"
-            } else if y.loss_credit > 0 && !y.loss_declared {
-                "veszteség nincs bevallva"
-            } else {
-                ""
-            };
+            let remark = year_remark(y);
             writeln!(
                 f,
                 "{};{};{};{};{};{};{};{};{};{}",
@@ -627,12 +752,17 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
-            let conn = Connection::open(dir.join("kripto-ado.sqlite"))?;
-            init_db(&conn)?;
-            app.manage(AppState { db: Arc::new(Mutex::new(conn)) });
+            let saved = std::fs::read_to_string(dir.join("current-profile")).unwrap_or_default();
+            let profile =
+                if data::profile_names(&dir).contains_key(saved.trim()) { saved.trim().to_string() } else { DEFAULT_PROFILE.to_string() };
+            let conn = open_db(&db_path(&dir, &profile))?;
+            // Heti automatikus mentés; ha nem sikerül, az app ettől még elindul.
+            let _ = backup::auto(&conn, &dir.join("backups"), &profile, Local::now().date_naive());
+            app.manage(AppState { db: Arc::new(Mutex::new(conn)), dir, profile: Mutex::new(profile) });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -648,7 +778,21 @@ pub fn run() {
             commit_import,
             delete_by_source,
             set_loss_declared,
-            export_csv
+            declaration_impact,
+            export_csv,
+            data::export_xlsx,
+            data::get_settings,
+            data::set_setting,
+            data::backup_save,
+            data::backup_list,
+            data::backup_dir,
+            data::backup_is_encrypted,
+            data::backup_restore,
+            data::list_profiles,
+            data::create_profile,
+            data::switch_profile,
+            data::rename_profile,
+            data::delete_profile
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -681,7 +825,7 @@ mod tests {
         let insert = |amount: f64| {
             conn.execute(
                 UPSERT_IMPORTED,
-                params!["2026-03-04", "EUR", amount, 390.0, "MNB", "2026-03-04", (amount * 390.0) as i64, "x", "binance", "buy", 0.4, "binance:2026-03-04:EUR:buy"],
+                params!["2026-03-04", "EUR", amount, 390.0, "MNB", "2026-03-04", (amount * 390.0) as i64, "x", "binance", "buy", 0.4, "binance:2026-03-04:EUR:buy", 2],
             )
             .unwrap();
         };

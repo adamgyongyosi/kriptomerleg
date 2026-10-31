@@ -47,6 +47,46 @@ pub struct YearSummary {
     pub carried_in_huf: i64,
     /// A veszteséget a keletkezés évének bevallásában feltüntették (később csak így vonható le).
     pub loss_declared: bool,
+    /// Kisértékű ügyletként figyelmen kívül hagyott bevétel (ha a beállítás be van kapcsolva).
+    pub small_exempt_huf: i64,
+    /// Ennyi bevétel lenne kisértékű ügyletként mentesíthető (a beállítástól függetlenül).
+    pub small_exempt_available: i64,
+}
+
+/// A havi minimálbér az év első napján (Szja tv. 3. § 77.), forintban. Ismeretlen évre `None`.
+/// Forrás: NAV 22–25SZJA kitöltési útmutatók; 2026: 322 800 Ft (kormányrendelet, sajtó alapján).
+pub fn minimum_wage(year: i32) -> Option<i64> {
+    match year {
+        2022 => Some(200_000),
+        2023 => Some(232_000),
+        2024 => Some(266_800),
+        2025 => Some(290_800),
+        2026 => Some(322_800),
+        _ => None,
+    }
+}
+
+/// Egy nap bevételei: hány bevételt hozó ügylet volt, és összesen mennyi forint.
+pub struct SaleDay {
+    pub year: i32,
+    pub trades: i64,
+    pub huf: i64,
+}
+
+/// Kisértékű ügylet (67/C. § (2)): nem kell bevételt megállapítani, ha az ügylet bevétele legfeljebb
+/// a minimálbér 10%-a, aznap nem volt más bevételt hozó ügylet, és az ilyen bevételek éves összege
+/// nem haladja meg a minimálbért. Ha az éves összeg túllépi, egyik sem mentes. A kiadások nem
+/// változnak. Évente a mentesíthető összeg.
+pub fn small_value_exempt(days: &[SaleDay]) -> BTreeMap<i32, i64> {
+    let mut out: BTreeMap<i32, i64> = BTreeMap::new();
+    for d in days {
+        let Some(wage) = minimum_wage(d.year) else { continue };
+        if d.trades == 1 && d.huf > 0 && d.huf * 10 <= wage {
+            *out.entry(d.year).or_default() += d.huf;
+        }
+    }
+    out.retain(|y, sum| minimum_wage(*y).is_some_and(|w| *sum <= w));
+    out
 }
 
 fn pct(x: i64) -> i64 {
@@ -98,6 +138,8 @@ fn compute(totals: &BTreeMap<i32, (i64, i64)>, through_year: i32, undeclared: &B
                 pre_regime: true,
                 carried_in_huf: 0,
                 loss_declared: true,
+                small_exempt_huf: 0,
+                small_exempt_available: 0,
             });
             continue;
         }
@@ -147,6 +189,8 @@ fn compute(totals: &BTreeMap<i32, (i64, i64)>, through_year: i32, undeclared: &B
             pre_regime: false,
             carried_in_huf: carried_in,
             loss_declared,
+            small_exempt_huf: 0,
+            small_exempt_available: 0,
         });
     }
 
@@ -192,6 +236,19 @@ mod tests {
     fn run_with(rows: &[(i32, i64, i64)], through: i32, undeclared: &[i32]) -> Vec<YearSummary> {
         let totals = rows.iter().map(|&(y, d, w)| (y, (d, w))).collect();
         summarize(&totals, through, &undeclared.iter().copied().collect())
+    }
+
+    #[test]
+    fn small_value_rule() {
+        let day = |year, trades, huf| SaleDay { year, trades, huf };
+        // 2025: küszöb 29 080 Ft/ügylet, éves keret 290 800 Ft.
+        let ex = small_value_exempt(&[day(2025, 1, 29_080), day(2025, 1, 29_081), day(2025, 2, 10_000), day(2025, 1, 5_000)]);
+        assert_eq!(ex.get(&2025), Some(&34_080));
+        // Ha az ilyen bevételek éves összege túllépi a minimálbért, egyik sem mentes.
+        let many: Vec<SaleDay> = (0..11).map(|_| day(2025, 1, 29_000)).collect();
+        assert_eq!(small_value_exempt(&many).get(&2025), None);
+        // Ismeretlen minimálbérű évre nincs mentesség.
+        assert!(small_value_exempt(&[day(2030, 1, 100)]).is_empty());
     }
 
     fn year(s: &[YearSummary], y: i32) -> &YearSummary {
