@@ -5,6 +5,8 @@ import { api, BackupFile, fmtDate, Profiles, today } from "./api";
 import { IconDownload, IconUpload } from "./Icons";
 
 interface Props {
+  /** A kiválasztott adóév (a PDF nyilvántartáshoz). */
+  year: number;
   profiles: Profiles | null;
   settings: Record<string, string>;
   /** Adatváltozás (visszaállítás, profilváltás) után mindent újratölt. */
@@ -17,7 +19,7 @@ interface Props {
 const kb = (n: number) => `${Math.max(1, Math.round(n / 1024)).toLocaleString("hu-HU")} KB`;
 
 /** Adatok: export, mentés és visszaállítás, profilok, emlékeztetők. */
-export function DataPage({ profiles, settings, onChanged, onProfiles, onSetting, notify }: Props) {
+export function DataPage({ year, profiles, settings, onChanged, onProfiles, onSetting, notify }: Props) {
   const [backups, setBackups] = useState<BackupFile[]>([]);
   const [password, setPassword] = useState("");
   const [restorePassword, setRestorePassword] = useState("");
@@ -50,6 +52,17 @@ export function DataPage({ profiles, settings, onChanged, onProfiles, onSetting,
       if (!path) return;
       await (kind === "csv" ? api.exportCsv(path) : api.exportXlsx(path));
       notify("Exportálva.");
+    });
+
+  const exportPdf = () =>
+    run(async () => {
+      const path = await save({
+        defaultPath: `kriptoeszkoz-nyilvantartas-${year}.pdf`,
+        filters: [{ name: "PDF", extensions: ["pdf"] }],
+      });
+      if (!path) return;
+      await api.exportPdf(path, year);
+      notify("A nyilvántartás elkészült.");
     });
 
   const backupNow = () =>
@@ -107,8 +120,14 @@ export function DataPage({ profiles, settings, onChanged, onProfiles, onSetting,
 
       <section className="panel">
         <h2>Export</h2>
-        <p className="muted">Az összes tétel és az éves összesítő, könyvelőnek vagy saját nyilvántartásnak.</p>
+        <p className="muted">
+          A PDF a törvény szerinti éves nyilvántartás (összesítő, veszteség-nyilvántartás, tételek MNB árfolyammal); az
+          elévülés miatt 5 évig őrizd meg. Az Excel és a CSV minden év összes tételét tartalmazza.
+        </p>
         <div className="button-row">
+          <button className="btn primary" onClick={exportPdf} disabled={busy}>
+            <IconDownload /> {year}. évi nyilvántartás (PDF)
+          </button>
           <button className="btn" onClick={() => exportTo("xlsx")} disabled={busy}>
             <IconDownload /> Excel (.xlsx)
           </button>

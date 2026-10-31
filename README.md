@@ -12,7 +12,8 @@ Weboldal: <https://adamgyongyosi.github.io/kripto-ado/> (a `site/` mappából, l
 - **Fizetés kriptóval:** ha kriptóval fizetsz árut vagy szolgáltatást (ajándékkártya, utazás), annak forintértéke bevételnek számít, mint egy kivétel. Külön tételtípus („Fizetés kriptóval”), a CSV-exportban is.
 - **Adómentesen még kivehető:** az Áttekintésen látszik, mekkora kivételig (vagy kriptós fizetésig) nem keletkezik adó az évben, a folyó évben euróban is, a mai MNB árfolyamon.
 - Adókiegyenlítés: a veszteség 15%-a levonható, legfeljebb a tárgyévi és az előző két évi kriptoadó erejéig; a 2025-ös bevallástól a veszteség nem évül el (2025. évi LXXXIII. tv.). Korábbi év vesztesége csak akkor, ha azt annak az évnek a bevallásában feltüntették – ezt évenként jelölni kell (lásd [Az adószámítás szabályai](#az-adószámítás-szabályai)).
-- Bevallási segéd: mit kell a 25SZJA 164. sorába és a 06-os lap 202–209. sorába írni (NAV kitöltési útmutató alapján).
+- Bevallási segéd: mit kell a 25SZJA 164. sorába és a 06-os lap 202–209. sorába írni (NAV kitöltési útmutató alapján). A kitöltendő sorok CSV-be is menthetők (nyomtatvány, lap, sor, oszlop, megnevezés, érték).
+- **Éves nyilvántartás PDF-ben** (Szja tv. 67/C. §): összesítő, veszteség-nyilvántartás (67/C. § (7a)) és az év összes tétele MNB árfolyammal, oldalszámozva – archiváláshoz, ellenőrzéshez. A betűkészlet (DejaVu Sans, `src-tauri/fonts/`, licenc: `DEJAVU-LICENSE.txt`) a programba van fordítva.
 - **Tőzsdei import:** Binance, Revolut, Kraken és Bybit export (CSV/Excel) beolvasása – a fiat ↔ kripto ügyletek díjakkal együtt, naponta összevonva, MNB árfolyamon. Ugyanaz a fájl újra importálva frissít, nem duplikál; ha egy nap már szerepel más forrásból (azonos nap, irány, legfeljebb 1% eltérés), az előnézet „lehet dupla” jelölést ad, és alapból kihagyja.
 - **Kisértékű ügyletek** (67/C. § (2)) kezelése bekapcsolható: a minimálbér 10%-áig terjedő, napi egyetlen bevétel kihagyható az eredményből (lásd lent).
 - **Önellenőrzés-segéd:** ha egy korábbi év vesztesége kimaradt a bevallásból, a Bevallási segéd megmutatja, melyik nyomtatvány melyik sorába kell pótolni, meddig, és mennyivel csökkenne utána az adó.
@@ -134,6 +135,8 @@ Ugyanebben a mappában a beépített böngészőmotor (WebView) gyorsítótára 
 Az éves összesítő és az adó nincs eltárolva, mindig a tételekből számolódik. Az adatbázis sémaverzióját a `PRAGMA user_version` tárolja; régebbi adatbázist az app induláskor automatikusan frissít.
 
 **Mentés:** az *Adatok és mentés* oldalon. A *Mentés fájlba* a teljes adatbázis pillanatképét írja ki (`.sqlite`); jelszóval titkosítva `.kmbackup` fájl lesz (formátum: `KMBACKUP1` fejléc + 16 bájt só + 12 bájt nonce + ChaCha20-Poly1305 titkosított adatbázis, a kulcs Argon2id-vel a jelszóból). A jelszót az app nem tárolja. A *Visszaállítás* előtt a jelenlegi állapotról automatikusan mentés készül. Az app induláskor és profilváltáskor hetente magától is ment a `backups/` mappába. Kézzel is elég a `.sqlite` fájlt átmásolni (az app bezárt állapotában).
+
+**ÁNYK XML:** az ÁNYK importálható XML-formátuma (`<nyomtatvanyok>`, `<mezo eazon="…">`) ismert, de a 25SZJA kriptós mezőinek kódjai (164., 202–209. sor) nincsenek nyilvánosan publikálva, évente változhatnak, és a NAV az ÁNYK-t 2026. december 31-ével kivezeti (utódja az ONYA, amelynek XML-importja még nincs dokumentálva). Ezért az app most nem készít XML-t; helyette a Bevallási segéd a kitöltendő sorokat CSV-be menti.
 
 **Export:** Excel (.xlsx, „Tételek” és „Éves összesítő” lap, számként tárolt összegekkel, szűrővel) és CSV (pontosvessző, tizedesvessző, UTF-8 BOM – Excelben közvetlenül megnyitható).
 

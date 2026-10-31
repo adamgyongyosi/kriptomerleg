@@ -3,6 +3,7 @@ mod data;
 mod excel;
 mod import;
 mod mnb;
+mod pdf;
 mod tax;
 
 use chrono::{Datelike, Duration, Local, NaiveDate};
@@ -781,6 +782,8 @@ pub fn run() {
             declaration_impact,
             export_csv,
             data::export_xlsx,
+            data::export_pdf,
+            data::save_text,
             data::get_settings,
             data::set_setting,
             data::backup_save,

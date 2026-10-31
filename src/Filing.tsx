@@ -1,7 +1,8 @@
 import { ReactNode, useEffect, useState } from "react";
+import { save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, DeclarationImpact, emptyYear, fmtFt, YearSummary } from "./api";
-import { IconAlert, IconCheck } from "./Icons";
+import { IconAlert, IconCheck, IconDownload } from "./Icons";
 
 const GUIDE_URL =
   "https://nav.gov.hu/pfile/file?path=%2Fnyomtatvanyok%2Fletoltesek%2Fnyomtatvanykitolto_programok%2Fnyomtatvanykitolto_programok_nav%2F25SZJA%2F25szja-kitoltesi-utmutato";
@@ -36,6 +37,42 @@ export function Filing({
   const undeclared = years.filter((y) => y.year < year && y.lossCredit > 0 && !y.lossDeclared);
   const showOffset = hasOffset || c.lossPool > 0 || (c.resultHuf > 0 && undeclared.length > 0);
 
+  /** A kitöltendő sorok listája (ugyanaz, mint a lenti lépésekben), CSV-be mentéshez. */
+  function filingRows(): [string, string, string, string, number][] {
+    const rows: [string, string, string, string, number][] = [];
+    if (c.resultHuf > 0) {
+      rows.push(["04", "164", "e", "Jövedelem (nyereség)", c.resultHuf], ["04", "164", "f", "A jövedelem adója (15%)", c.taxGross]);
+    } else if (c.resultHuf < 0) rows.push(["04", "164", "a", "Veszteség", -c.resultHuf]);
+    if (showOffset) {
+      rows.push(
+        ["06", "202", "b", `${year - 2}. évi kriptojövedelem adója`, get(year - 2).taxGross],
+        ["06", "203", "b", `${year - 1}. évi kriptojövedelem adója`, get(year - 1).taxGross],
+        ["06", "204", "b", `${year}. évi kriptojövedelem adója`, c.taxGross],
+        ["06", "205", "b", "Keret összesen", formCap],
+        ["06", "206", "a", `${year}. évi veszteség`, c.resultHuf < 0 ? -c.resultHuf : 0],
+        ["06", "207", "a", "Korábbi évek még el nem számolt, bevallott vesztesége", priorLossHuf],
+        ["06", "208", "c", "Jogosító összeg", c.lossPool],
+        ["06", "209", "c", "Adókiegyenlítés", c.offsetUsed],
+        ["C", "75", "", "Adókiegyenlítés címén befizetett adó", c.offsetUsed],
+      );
+    }
+    return rows;
+  }
+
+  async function saveRows() {
+    const path = await save({ defaultPath: `${form}-kripto-sorok.csv`, filters: [{ name: "CSV", extensions: ["csv"] }] });
+    if (!path) return;
+    const lines = [
+      "Nyomtatvány;Lap;Sor;Oszlop;Megnevezés;Érték (Ft)",
+      ...filingRows().map(([lap, sor, col, label, value]) => [form, lap, sor, col, label, Math.round(value)].join(";")),
+    ];
+    try {
+      await api.saveText(path, lines.join("\r\n") + "\r\n");
+    } catch (e) {
+      window.alert(String(e));
+    }
+  }
+
   return (
     <div className="page filing">
       <header className="page-head">
@@ -45,6 +82,11 @@ export function Filing({
             {form} bevallás, beadási határidő: {year + 1}. május 20.
           </p>
         </div>
+        {!c.preRegime && !nothing && (
+          <button className="btn" onClick={saveRows} title="A kitöltendő sorok listája (nyomtatvány, lap, sor, oszlop, érték)">
+            <IconDownload /> Sorok mentése (CSV)
+          </button>
+        )}
       </header>
 
       {year !== VERIFIED_FORM_YEAR && (

@@ -91,6 +91,34 @@ pub(crate) fn write_xlsx(txs: &[Tx], years: &[tax::YearSummary], path: &Path) ->
     wb.save(path).map_err(x)
 }
 
+/* ───────────── PDF nyilvántartás ───────────── */
+
+/// Az év nyilvántartása PDF-ben: összesítő, veszteség-nyilvántartás, tételek.
+#[tauri::command(async)]
+pub fn export_pdf(state: State<'_, AppState>, path: String, year: i32) -> Result<(), String> {
+    let conn = state.db.lock().unwrap();
+    let mut txs = all_transactions(&conn, Some(year))?;
+    txs.reverse();
+    let years = compute_summary(&conn)?;
+    drop(conn);
+    let id = state.profile.lock().unwrap().clone();
+    let profile = profile_names(&state.dir).get(&id).cloned().unwrap_or(id);
+    let report = pdf::Report {
+        year,
+        profile: &profile,
+        generated: Local::now().format("%Y-%m-%d %H:%M").to_string(),
+        years: &years,
+        txs: &txs,
+    };
+    pdf::write(&report, Path::new(&path))
+}
+
+/// Szöveges fájl mentése UTF-8 BOM-mal (pl. a bevallási sorok CSV-je, amit a felület állít össze).
+#[tauri::command(async)]
+pub fn save_text(path: String, text: String) -> Result<(), String> {
+    std::fs::write(&path, [&[0xEF_u8, 0xBB, 0xBF][..], text.as_bytes()].concat()).map_err(err)
+}
+
 /* ───────────── Beállítások ───────────── */
 
 #[tauri::command]

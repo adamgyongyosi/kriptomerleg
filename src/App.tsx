@@ -219,6 +219,7 @@ function App() {
         )}
         {page === "data" && (
           <DataPage
+            year={year}
             profiles={profiles}
             settings={settings}
             onChanged={async () => {
