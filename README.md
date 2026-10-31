@@ -278,5 +278,4 @@ Arculat (logó, színek, hangnem): [`brand/README.md`](brand/README.md).
 - `packaging/` – AUR és Flatpak csomagleírás
 - `site/` – landing oldal (`index.html`, `og-image.png`, `sitemap.xml`, `llms.txt`); `brand/og-card.html` – a megosztási kép forrása
 - `brand/` – logó és arculati leírás
-- `site/` – landing oldal (GitHub Pages)
-- `src/` – React felület (`App.tsx`, `EntryForm.tsx`, `ImportDialog.tsx`, `Filing.tsx`, `Chart.tsx`)
+- `CLAUDE.md` – tömör fejlesztői útmutató AI kódolóasszisztensnek (Claude Code): parancsok, architektúra, konvenciók; nagyobb szerkezeti változásnál ezt is igazítsd
