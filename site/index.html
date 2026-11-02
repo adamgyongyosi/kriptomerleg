@@ -194,6 +194,7 @@
   <meta name="theme-color" content="#0f766e" />
   <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <link rel="apple-touch-icon" href="icon-256.png" />
+  <script>document.documentElement.classList.add("js")</script>
   <style>
     :root {
       color-scheme: light;
@@ -294,8 +295,15 @@
 
     /* Hero */
     .hero { padding: 64px 0 40px; position: relative; }
-    .hero::before { content: ""; position: absolute; inset: -64px 0 auto; height: 620px; z-index: -1; pointer-events: none;
-      background: radial-gradient(700px 380px at 80% 30%, var(--brand-soft), transparent 70%); }
+    .aurora { position: absolute; inset: -64px 0 auto; height: 760px; z-index: -1; pointer-events: none; overflow: hidden;
+      mask-image: linear-gradient(to bottom, #000 55%, transparent); -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent); }
+    .aurora span { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.55; will-change: transform; }
+    .aurora span:nth-child(1) { width: 520px; height: 420px; right: 4%; top: 40px; background: color-mix(in srgb, var(--brand-2) 45%, transparent); animation: drift1 18s ease-in-out infinite alternate; }
+    .aurora span:nth-child(2) { width: 420px; height: 360px; right: 28%; top: 220px; background: color-mix(in srgb, #3b82f6 28%, transparent); animation: drift2 22s ease-in-out infinite alternate; }
+    .aurora span:nth-child(3) { width: 380px; height: 320px; left: -6%; top: -40px; background: color-mix(in srgb, var(--brand) 26%, transparent); animation: drift3 26s ease-in-out infinite alternate; }
+    @keyframes drift1 { to { transform: translate(-120px, 80px) scale(1.15); } }
+    @keyframes drift2 { to { transform: translate(140px, -60px) scale(0.9); } }
+    @keyframes drift3 { to { transform: translate(90px, 120px) scale(1.2); } }
     .hero .wrap { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 56px; align-items: center; }
     @media (max-width: 980px) { .hero .wrap { grid-template-columns: minmax(0, 1fr); gap: 40px; } }
     .hero h1 { font-size: clamp(38px, 5.2vw, 60px); line-height: 1.03; letter-spacing: -0.035em; }
@@ -311,8 +319,14 @@
 
     /* Sources strip */
     .sources { padding: 8px 0 56px; }
-    .sources .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 12px; }
-    .sources span.label { font-size: 13px; color: var(--muted); margin-right: 6px; }
+    .sources .wrap { display: flex; align-items: center; gap: 14px; }
+    .sources span.label { flex: none; font-size: 13px; color: var(--muted); }
+    .marquee { flex: 1; min-width: 0; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+    .track, .track .dup { display: flex; gap: 12px; width: max-content; }
+    .track { animation: marquee 32s linear infinite; padding: 4px 0; }
+    .track .dup { padding-left: 12px; }
+    .marquee:hover .track { animation-play-state: paused; }
+    @keyframes marquee { to { transform: translateX(-50%); } }
     .chip { font-size: 14px; font-weight: 600; padding: 6px 13px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
 
     /* Képernyőkép keretben */
@@ -446,9 +460,74 @@
     .lb-bar p { flex: 1; font-size: 15px; }
     .lb-bar button { font: inherit; font-size: 20px; line-height: 1; width: 42px; height: 42px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.08); color: #fff; cursor: pointer; }
     .lb-bar button:hover { background: rgba(255, 255, 255, 0.18); }
+
+    /* Animációk – csak transform/opacity; „csökkentett mozgás” beállításnál kikapcsolnak */
+    @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+    .hero .wrap > div:first-child > * { animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+    .hero .wrap > div:first-child > :nth-child(2) { animation-delay: 0.08s; }
+    .hero .wrap > div:first-child > :nth-child(3) { animation-delay: 0.16s; }
+    .hero .wrap > div:first-child > :nth-child(4) { animation-delay: 0.22s; }
+    .hero .wrap > div:first-child > :nth-child(5) { animation-delay: 0.28s; }
+    .hero h1 em { background: linear-gradient(90deg, var(--brand), var(--brand-2), #38bdf8, var(--brand-2), var(--brand)); background-size: 300% 100%;
+      -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 9s ease-in-out infinite; }
+    @keyframes shimmer { 50% { background-position: 100% 0; } }
+
+    .hero-visual { position: relative; perspective: 1800px; }
+    .hero-visual::before { content: ""; position: absolute; inset: 8% 6% -4%; z-index: -1; border-radius: 40px; filter: blur(48px); opacity: 0.4;
+      background: conic-gradient(from 180deg, var(--brand-2), #38bdf8, var(--brand), var(--brand-2)); animation: spin 14s linear infinite; }
+    @keyframes spin { to { transform: rotate(1turn); } }
+    .hero-visual .shot { --rx: 6deg; --ry: -9deg; transform: rotateX(var(--rx)) rotateY(var(--ry));
+      transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1); animation: tilt-in 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s both; }
+    .hero-visual .shot::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+      background: radial-gradient(600px circle at var(--gx, 30%) var(--gy, 0%), rgba(255, 255, 255, 0.16), transparent 45%); }
+    @keyframes tilt-in { from { opacity: 0; transform: translateY(40px) rotateX(24deg) rotateY(-18deg) scale(0.92); } }
+    @media (max-width: 980px) { .hero-visual .shot { --rx: 0deg; --ry: 0deg; } }
+
+    .js .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.75s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.75s cubic-bezier(0.2, 0.7, 0.2, 1); transition-delay: var(--d, 0s); }
+    .js .reveal.from-left { transform: translateX(-36px); }
+    .js .reveal.from-right { transform: translateX(36px); }
+    .js .reveal.in { opacity: 1; transform: none; }
+
+    /* Görgetéshez kötött animáció (újabb böngészők): a kép a keretben finoman „ráközelít”, felül haladásjelző */
+    @supports (animation-timeline: view()) {
+      .spot .shot picture img { animation: settle linear both; animation-timeline: view(); animation-range: entry 0% cover 45%; }
+      @keyframes settle { from { transform: scale(1.12); } to { transform: scale(1); } }
+      .progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 30; transform-origin: 0 50%; transform: scaleX(0);
+        background: linear-gradient(90deg, var(--brand), var(--brand-2), #38bdf8); animation: grow linear both; animation-timeline: scroll(root); }
+      @keyframes grow { to { transform: scaleX(1); } }
+    }
+
+    /* Kurzort követő fény a kártyákon */
+    .glow { position: relative; isolation: isolate; }
+    .glow::before { content: ""; position: absolute; inset: -1px; z-index: -1; border-radius: inherit; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+      background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--brand-2) 22%, transparent), transparent 60%); }
+    .glow:hover::before { opacity: 1; }
+    .card:hover, .step:hover, .dl:hover { box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--brand) 35%, var(--line)); }
+
+    /* Fénycsík a fő gombokon */
+    .btn.primary { position: relative; overflow: hidden; }
+    .btn.primary::after { content: ""; position: absolute; inset: 0; transform: translateX(-120%) skewX(-20deg); pointer-events: none;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent); }
+    .btn.primary:hover::after { transform: translateX(120%) skewX(-20deg); transition: transform 0.7s ease; }
+
+    header.top { transition: box-shadow 0.3s, background 0.3s; }
+    header.top.scrolled { box-shadow: 0 8px 24px -16px rgba(0, 0, 0, 0.35); }
+    dialog.lightbox[open] { animation: pop 0.28s cubic-bezier(0.2, 0.7, 0.2, 1); }
+    dialog.lightbox[open]::backdrop { animation: fade 0.28s ease; }
+    @keyframes pop { from { opacity: 0; transform: scale(0.94) translateY(12px); } }
+    @keyframes fade { from { opacity: 0; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .js .reveal { opacity: 1; transform: none; }
+      .hero-visual .shot { --rx: 0deg; --ry: 0deg; }
+      .track .dup { display: none; }
+      .track { flex-wrap: wrap; width: auto; }
+    }
   </style>
 </head>
 <body>
+  <div class="progress" aria-hidden="true"></div>
   <a class="skip" href="#tartalom">Ugrás a tartalomra</a>
   <header class="top">
     <div class="wrap">
@@ -466,6 +545,7 @@
 
   <main id="tartalom">
     <section class="hero">
+      <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
       <div class="wrap">
         <div>
           <h1><span class="eyebrow">Kriptó adó kalkulátor · SZJA · NAV bevallás</span>A kriptóadód,<br /><em>a saját gépeden.</em></h1>
@@ -487,15 +567,18 @@
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Ingyenes, nyílt forráskódú, fiók nélkül</li>
           </ul>
         </div>
-        <div class="shot" role="button" tabindex="0" data-shot="attekintes" aria-label="Nagyítás: Kriptomérleg – az Áttekintés oldal: fizetendő adó, adómentesen még kivehető összeg, befizetések és kivételek, új tétel rögzítése MNB árfolyammal"><div class="bar" aria-hidden="true"><img src="logo.svg" alt="" width="14" height="14" />Kriptomérleg<span class="win">–&nbsp;&nbsp;□&nbsp;&nbsp;✕</span></div><picture><source media="(prefers-color-scheme: dark)" srcset="screens/attekintes-dark-sm.webp 1180w, screens/attekintes-dark.webp 2360w" sizes="(max-width: 980px) 100vw, 680px" /><img src="screens/attekintes-light-sm.webp" srcset="screens/attekintes-light-sm.webp 1180w, screens/attekintes-light.webp 2360w" sizes="(max-width: 980px) 100vw, 680px" width="1180" height="760" alt="Kriptomérleg – az Áttekintés oldal: fizetendő adó, adómentesen még kivehető összeg, befizetések és kivételek, új tétel rögzítése MNB árfolyammal" fetchpriority="high" decoding="async" /></picture><span class="zoom" aria-hidden="true">Nagyítás</span></div>
+        <div class="hero-visual">
+          <div class="shot" role="button" tabindex="0" data-shot="attekintes" aria-label="Nagyítás: Kriptomérleg – az Áttekintés oldal: fizetendő adó, adómentesen még kivehető összeg, befizetések és kivételek, új tétel rögzítése MNB árfolyammal"><div class="bar" aria-hidden="true"><img src="logo.svg" alt="" width="14" height="14" />Kriptomérleg<span class="win">–&nbsp;&nbsp;□&nbsp;&nbsp;✕</span></div><picture><source media="(prefers-color-scheme: dark)" srcset="screens/attekintes-dark-sm.webp 1180w, screens/attekintes-dark.webp 2360w" sizes="(max-width: 980px) 100vw, 680px" /><img src="screens/attekintes-light-sm.webp" srcset="screens/attekintes-light-sm.webp 1180w, screens/attekintes-light.webp 2360w" sizes="(max-width: 980px) 100vw, 680px" width="1180" height="760" alt="Kriptomérleg – az Áttekintés oldal: fizetendő adó, adómentesen még kivehető összeg, befizetések és kivételek, új tétel rögzítése MNB árfolyammal" fetchpriority="high" decoding="async" /></picture><span class="zoom" aria-hidden="true">Nagyítás</span></div>
+        </div>
       </div>
     </section>
 
     <div class="sources" aria-label="Támogatott források">
       <div class="wrap">
         <span class="label">Beolvassa:</span>
-        <span class="chip">Binance</span><span class="chip">Revolut</span><span class="chip">Kraken</span><span class="chip">Bybit</span><span class="chip">Crypto.com</span><span class="chip">bankszámlakivonat</span><span class="chip">saját Excel</span>
+        <div class="marquee"><div class="track"><span class="chip">Binance</span><span class="chip">Revolut</span><span class="chip">Kraken</span><span class="chip">Bybit</span><span class="chip">Crypto.com</span><span class="chip">bankszámlakivonat</span><span class="chip">saját Excel</span><span class="dup" aria-hidden="true"><span class="chip">Binance</span><span class="chip">Revolut</span><span class="chip">Kraken</span><span class="chip">Bybit</span><span class="chip">Crypto.com</span><span class="chip">bankszámlakivonat</span><span class="chip">saját Excel</span></span></div></div>
       </div>
+    </div>
     </div>
 
     <div class="privacy alt">
@@ -801,6 +884,57 @@
         if (e.key === "ArrowRight") show(at + 1);
         if (e.key === "ArrowLeft") show(at - 1);
       });
+    })();
+
+    // Animációk: megjelenés görgetéskor, kurzort követő fény, a hero kép dőlése az egérrel.
+    (function () {
+      const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const sel = [".spot-text", ".spot .shot", ".thumbs figure", ".card", ".step", ".p-item", ".dl", ".faq details", ".compare",
+        "section h2", "section .lead", "section .eyebrow", ".final .box"].join(",");
+      const items = [...document.querySelectorAll(sel)].filter((el) => !el.closest(".hero") && !el.closest(".spot-text .eyebrow, .final h2"));
+      items.forEach((el) => {
+        el.classList.add("reveal");
+        const spot = el.closest(".spot");
+        if (spot && el.matches(".shot")) el.classList.add(spot.matches(":nth-child(even)") ? "from-left" : "from-right");
+        const sibs = [...el.parentElement.children].filter((c) => c.matches(".card, .step, .p-item, .dl, .thumbs figure"));
+        if (sibs.length > 1) el.style.setProperty("--d", (sibs.indexOf(el) % 3) * 0.09 + "s");
+      });
+      if (still || !("IntersectionObserver" in window)) {
+        items.forEach((el) => el.classList.add("in"));
+      } else {
+        const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+          if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+        }), { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
+        items.forEach((el) => io.observe(el));
+      }
+
+      document.querySelectorAll(".card, .step, .dl").forEach((el) => {
+        el.classList.add("glow");
+        el.addEventListener("pointermove", (e) => {
+          const r = el.getBoundingClientRect();
+          el.style.setProperty("--mx", e.clientX - r.left + "px");
+          el.style.setProperty("--my", e.clientY - r.top + "px");
+        });
+      });
+
+      const visual = document.querySelector(".hero-visual");
+      const shot = visual.querySelector(".shot");
+      if (!still && matchMedia("(hover: hover) and (pointer: fine) and (min-width: 981px)").matches) {
+        visual.addEventListener("pointermove", (e) => {
+          const r = visual.getBoundingClientRect();
+          const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+          shot.style.setProperty("--ry", (-9 + x * 10).toFixed(2) + "deg");
+          shot.style.setProperty("--rx", (6 - y * 8).toFixed(2) + "deg");
+          shot.style.setProperty("--gx", (x + 0.5) * 100 + "%");
+          shot.style.setProperty("--gy", (y + 0.5) * 100 + "%");
+        });
+        visual.addEventListener("pointerleave", () => ["--rx", "--ry", "--gx", "--gy"].forEach((v) => shot.style.removeProperty(v)));
+      }
+
+      const top = document.querySelector("header.top");
+      const onScroll = () => top.classList.toggle("scrolled", scrollY > 8);
+      addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
     })();
 
     // Az operációs rendszerhez illő letöltés kiemelése.
