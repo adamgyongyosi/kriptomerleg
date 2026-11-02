@@ -167,8 +167,17 @@ fn err(e: impl std::fmt::Display) -> String {
     e.to_string()
 }
 
+/// Múltbeli napokra már feloldott MNB árfolyamok (a futás idejére). Hétvégére és ünnepnapra az
+/// adatbázisban nincs sor, ezért enélkül minden ilyen lekérdezés újra a hálózathoz fordulna.
+/// Az árfolyam profilfüggetlen tény, a mai napot pedig nem jegyezzük meg (az MNB napközben tesz közzé).
+static RESOLVED_RATES: Mutex<BTreeMap<(String, NaiveDate), (f64, String)>> = Mutex::new(BTreeMap::new());
+
 /// Az adott napon érvényes MNB árfolyam: a napon vagy azt megelőzően utoljára közzétett érték.
 async fn mnb_rate(db: &Db, currency: &str, date: NaiveDate) -> Result<RateInfo, String> {
+    let memo_key = (currency.to_string(), date);
+    if let Some((rate, rate_date)) = RESOLVED_RATES.lock().unwrap().get(&memo_key) {
+        return Ok(RateInfo { rate: *rate, rate_date: rate_date.clone() });
+    }
     let key = date.to_string();
     {
         let conn = db.lock().unwrap();
@@ -186,19 +195,29 @@ async fn mnb_rate(db: &Db, currency: &str, date: NaiveDate) -> Result<RateInfo, 
         .await
         .map_err(err)??;
 
-    let conn = db.lock().unwrap();
-    for (d, rate) in &days {
-        conn.execute(
-            "INSERT OR REPLACE INTO rates (currency, date, rate) VALUES (?1, ?2, ?3)",
-            params![currency, d.to_string(), rate],
-        )
-        .map_err(err)?;
-    }
-    days.iter()
+    store_rates(&mut db.lock().unwrap(), currency, &days)?;
+    let info = days
+        .iter()
         .filter(|(d, _)| *d <= date)
         .max_by_key(|(d, _)| *d)
         .map(|(d, rate)| RateInfo { rate: *rate, rate_date: d.to_string() })
-        .ok_or_else(|| format!("Nincs MNB {currency} árfolyam {date} előtti 14 napban."))
+        .ok_or_else(|| format!("Nincs MNB {currency} árfolyam {date} előtti 14 napban."))?;
+    if date < Local::now().date_naive() {
+        RESOLVED_RATES.lock().unwrap().insert(memo_key, (info.rate, info.rate_date.clone()));
+    }
+    Ok(info)
+}
+
+/// Letöltött árfolyamok mentése egyetlen tranzakcióban (soronkénti lemezírás helyett).
+fn store_rates(conn: &mut Connection, currency: &str, days: &[(NaiveDate, f64)]) -> Result<(), String> {
+    let tx = conn.transaction().map_err(err)?;
+    {
+        let mut stmt = tx.prepare_cached("INSERT OR REPLACE INTO rates (currency, date, rate) VALUES (?1, ?2, ?3)").map_err(err)?;
+        for (d, rate) in days {
+            stmt.execute(params![currency, d.to_string(), rate]).map_err(err)?;
+        }
+    }
+    tx.commit().map_err(err)
 }
 
 /// Ellenőrzi a bemenetet és kiszámolja az árfolyamot és a forintösszeget.
@@ -468,28 +487,30 @@ fn summary(state: State<'_, AppState>) -> Result<Vec<tax::YearSummary>, String> 
 #[tauri::command(async)]
 fn import_excel(state: State<'_, AppState>, path: String) -> Result<ImportResult, String> {
     let rows = excel::read_workbook(&path)?;
-    let conn = state.db.lock().unwrap();
+    let mut guard = state.db.lock().unwrap();
+    let conn = guard.transaction().map_err(err)?;
     let (mut imported, mut skipped) = (0, 0);
-    for (date, huf) in rows {
-        let exists: bool = conn
-            .query_row(
-                "SELECT EXISTS(SELECT 1 FROM transactions WHERE date = ?1 AND currency = 'HUF' AND amount = ?2)",
-                params![date.to_string(), huf as f64],
-                |r| r.get(0),
+    {
+        let mut exists_stmt = conn
+            .prepare_cached("SELECT EXISTS(SELECT 1 FROM transactions WHERE date = ?1 AND currency = 'HUF' AND amount = ?2)")
+            .map_err(err)?;
+        let mut insert = conn
+            .prepare_cached(
+                "INSERT INTO transactions (date, currency, amount, rate, rate_source, rate_date, huf, note, source, kind)
+                 VALUES (?1, 'HUF', ?2, 1, '-', NULL, ?3, 'Excel import', 'excel', ?4)",
             )
             .map_err(err)?;
-        if exists {
-            skipped += 1;
-            continue;
+        for (date, huf) in rows {
+            let exists: bool = exists_stmt.query_row(params![date.to_string(), huf as f64], |r| r.get(0)).map_err(err)?;
+            if exists {
+                skipped += 1;
+                continue;
+            }
+            insert.execute(params![date.to_string(), huf as f64, huf, manual_kind(huf as f64)]).map_err(err)?;
+            imported += 1;
         }
-        conn.execute(
-            "INSERT INTO transactions (date, currency, amount, rate, rate_source, rate_date, huf, note, source, kind)
-             VALUES (?1, 'HUF', ?2, 1, '-', NULL, ?3, 'Excel import', 'excel', ?4)",
-            params![date.to_string(), huf as f64, huf, manual_kind(huf as f64)],
-        )
-        .map_err(err)?;
-        imported += 1;
     }
+    conn.commit().map_err(err)?;
     Ok(ImportResult { imported, skipped })
 }
 
@@ -541,10 +562,9 @@ fn preview_parsed(state: &AppState, parsed: import::Parsed) -> Result<ImportPrev
     }
     let conn = state.db.lock().unwrap();
     let mut existing = 0;
+    let mut exists_stmt = conn.prepare_cached("SELECT EXISTS(SELECT 1 FROM transactions WHERE external_id = ?1)").map_err(err)?;
     for r in &mut rows {
-        let found: bool = conn
-            .query_row("SELECT EXISTS(SELECT 1 FROM transactions WHERE external_id = ?1)", [&r.key], |x| x.get(0))
-            .map_err(err)?;
+        let found: bool = exists_stmt.query_row([&r.key], |x| x.get(0)).map_err(err)?;
         existing += usize::from(found);
         r.duplicate = find_duplicate(&conn, parsed.source, r)?;
     }
@@ -577,14 +597,13 @@ fn preview_parsed(state: &AppState, parsed: import::Parsed) -> Result<ImportPrev
 /// legfeljebb 1%-kal eltérő összegű tétel – valószínűleg ugyanaz az ügylet.
 fn find_duplicate(conn: &Connection, source: &str, r: &import::ImportRow) -> Result<Option<String>, String> {
     let sign = if r.kind == "buy" { 1.0 } else { -1.0 };
-    conn.query_row(
+    conn.prepare_cached(
         "SELECT source, amount FROM transactions
          WHERE date = ?1 AND currency = ?2 AND source <> ?3 AND amount * ?4 > 0
            AND abs(abs(amount) - ?5) <= ?5 * 0.01
          LIMIT 1",
-        params![r.date, r.currency, source, sign, r.amount],
-        |x| Ok((x.get::<_, String>(0)?, x.get::<_, f64>(1)?)),
     )
+    .and_then(|mut s| s.query_row(params![r.date, r.currency, source, sign, r.amount], |x| Ok((x.get::<_, String>(0)?, x.get::<_, f64>(1)?))))
     .optional()
     .map(|o| o.map(|(src, amount)| format!("{} tétel ugyanezen a napon: {} {}", capitalize(&src), hu_num(amount.abs(), 2), r.currency)))
     .map_err(err)
@@ -606,28 +625,24 @@ async fn commit_import(state: State<'_, AppState>, source: String, rows: Vec<imp
         let days = tauri::async_runtime::spawn_blocking(move || mnb::fetch_range(&cur, from - Duration::days(14), to))
             .await
             .map_err(err)??;
-        let conn = state.db.lock().unwrap();
-        for (d, rate) in &days {
-            conn.execute(
-                "INSERT OR REPLACE INTO rates (currency, date, rate) VALUES (?1, ?2, ?3)",
-                params![currency, d.to_string(), rate],
-            )
-            .map_err(err)?;
-        }
+        store_rates(&mut state.db.lock().unwrap(), &currency, &days)?;
     }
 
-    let conn = state.db.lock().unwrap();
+    // Egyetlen tranzakció: sok száz sornál is egy lemezírás, és hiba esetén egyik sor sem kerül be.
+    let mut guard = state.db.lock().unwrap();
+    let conn = guard.transaction().map_err(err)?;
+    let mut rate_of = conn
+        .prepare_cached("SELECT date, rate FROM rates WHERE currency = ?1 AND date <= ?2 ORDER BY date DESC LIMIT 1")
+        .map_err(err)?;
+    let mut exists_stmt = conn.prepare_cached("SELECT EXISTS(SELECT 1 FROM transactions WHERE external_id = ?1)").map_err(err)?;
+    let mut upsert = conn.prepare_cached(UPSERT_IMPORTED).map_err(err)?;
     let (mut imported, mut updated) = (0, 0);
     for r in &rows {
         let (rate, rate_source, rate_date): (f64, &str, Option<String>) = if r.currency == "HUF" {
             (1.0, "-", None)
         } else {
-            let (d, rate): (String, f64) = conn
-                .query_row(
-                    "SELECT date, rate FROM rates WHERE currency = ?1 AND date <= ?2 ORDER BY date DESC LIMIT 1",
-                    params![r.currency, r.date],
-                    |x| Ok((x.get(0)?, x.get(1)?)),
-                )
+            let (d, rate): (String, f64) = rate_of
+                .query_row(params![r.currency, r.date], |x| Ok((x.get(0)?, x.get(1)?)))
                 .map_err(|_| format!("Nincs MNB {} árfolyam erre a napra: {}", r.currency, r.date))?;
             (rate, "MNB", Some(d))
         };
@@ -642,16 +657,14 @@ async fn commit_import(state: State<'_, AppState>, source: String, rows: Vec<imp
         if r.fee > 0.0 {
             note.push_str(&format!(" · díj {} {}", hu_num(r.fee, 2), r.currency));
         }
-        let exists: bool = conn
-            .query_row("SELECT EXISTS(SELECT 1 FROM transactions WHERE external_id = ?1)", [&r.key], |x| x.get(0))
+        let exists: bool = exists_stmt.query_row([&r.key], |x| x.get(0)).map_err(err)?;
+        upsert
+            .execute(params![r.date, r.currency, amount, rate, rate_source, rate_date, huf, note, source, r.kind, r.fee, r.key, r.count as i64])
             .map_err(err)?;
-        conn.execute(
-            UPSERT_IMPORTED,
-            params![r.date, r.currency, amount, rate, rate_source, rate_date, huf, note, source, r.kind, r.fee, r.key, r.count as i64],
-        )
-        .map_err(err)?;
         if exists { updated += 1 } else { imported += 1 }
     }
+    drop((rate_of, exists_stmt, upsert));
+    conn.commit().map_err(err)?;
     Ok(ImportResult { imported, skipped: updated })
 }
 
@@ -880,6 +893,23 @@ mod tests {
         assert!(find_duplicate(&conn, "binance", &row("buy", 600.0)).unwrap().is_none());
         assert!(find_duplicate(&conn, "binance", &row("sell", 500.0)).unwrap().is_none());
         assert!(find_duplicate(&conn, "kézi", &row("buy", 500.0)).unwrap().is_none());
+    }
+
+    #[test]
+    fn stores_rates_in_one_transaction() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+        let d = |s: &str| NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap();
+        store_rates(&mut conn, "EUR", &[(d("2026-03-02"), 390.0), (d("2026-03-03"), 391.5)]).unwrap();
+        store_rates(&mut conn, "EUR", &[(d("2026-03-03"), 392.0)]).unwrap(); // felülírja
+        let rows: Vec<(String, f64)> = conn
+            .prepare("SELECT date, rate FROM rates ORDER BY date")
+            .unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(rows, vec![("2026-03-02".into(), 390.0), ("2026-03-03".into(), 392.0)]);
     }
 
     #[test]

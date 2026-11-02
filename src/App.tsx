@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDialogs } from "./Dialogs";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { api, pickOpen, inDesktopApp, deadlineReminder, emptyYear, kindLabel, SOURCE_LABEL, fmtAmount, fmtDate, fmtFt, fmtRate, fmtTax, MONTHS, Profiles, today, Tx, YearSummary } from "./api";
@@ -27,6 +27,18 @@ async function notifyDeadline(years: YearSummary[], settings: Record<string, str
   await api.setSetting(key, today());
 }
 
+// A mai EUR árfolyam naponta egyszer: az Áttekintés minden megnyitásakor ne forduljon újra az MNB-hez.
+let eurToday: { day: string; rate: Promise<number> } | null = null;
+function todayEurRate(): Promise<number> {
+  const day = today();
+  if (eurToday?.day !== day) {
+    const rate = api.getMnbRate(day, "EUR").then((r) => r.rate);
+    rate.catch(() => (eurToday = null));
+    eurToday = { day, rate };
+  }
+  return eurToday.rate;
+}
+
 function App() {
   const [page, setPage] = useState<Page>("overview");
   const [years, setYears] = useState<YearSummary[]>([]);
@@ -42,9 +54,12 @@ function App() {
   const [update, setUpdate] = useState<Update | null>(null);
   const [updating, setUpdating] = useState<number | null | false>(false);
 
+  // Új üzenetnél a korábbi időzítő törlődik, különben az idő előtt eltüntetné az újat.
+  const toastTimer = useRef<number | undefined>(undefined);
   const notify = useCallback((text: string, error = false) => {
     setToast({ text, error });
-    window.setTimeout(() => setToast(null), error ? 6000 : 3000);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), error ? 6000 : 3000);
   }, []);
 
   const reload = useCallback(async () => {
@@ -387,9 +402,8 @@ function Overview(props: {
   const [eurRate, setEurRate] = useState<number | null>(null);
   useEffect(() => {
     if (!inDesktopApp()) return;
-    api
-      .getMnbRate(today(), "EUR")
-      .then((r) => setEurRate(r.rate))
+    todayEurRate()
+      .then(setEurRate)
       .catch(() => setEurRate(null));
   }, []);
   // Korábbi veszteséges évek: csak a bevallott veszteség csökkenti az idei adót.

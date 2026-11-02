@@ -81,6 +81,7 @@ A formátumot az oszlopnevek alapján ismeri fel. A menük neve a tőzsdei appok
 - Csak a **fiat ↔ kripto** ügyletek számítanak: vétel fiatért = kiadás, eladás fiatra = bevétel. A tőzsdére utalt vagy onnan kivett pénz, és a kripto–kripto csere (pl. BTC → USDT) nem adóköteles, ezeket kihagyja.
 - A **díjak** a kiadást növelik, illetve a bevételt csökkentik. Ha a díj kriptóban van (pl. Bybit vételnél), az ügylet árfolyamán számítja át.
 - Az ügyleteket **naponta, devizánként és irányonként összevonja** egy tételbe; a forintra váltás az aznapi MNB árfolyammal történik (USD-t, GBP-t stb. is kezel).
+- A mentés **egyetlen adatbázis-tranzakcióban** történik: több ezer soros fájlnál is egy lemezírás, és ha közben hiba lép fel, egyik tétel sem kerül be félig.
 - A tőzsdék UTC-ben adják az időt, az app ezt magyar időre (CET/CEST) váltja a nap meghatározásához.
 - **Újraimportálás** (pl. hosszabb időszakkal) nem duplikál: a már meglévő napi tételeket frissíti.
 - Ha az adott évben **kézi vagy Excel-tétel** is van, figyelmeztet: ha azok ugyanazokat a vásárlásokat jelentik (pl. a tőzsdére utalt euró), töröld őket, különben a kiadás duplán számít.
@@ -130,7 +131,7 @@ Ugyanebben a mappában a beépített böngészőmotor (WebView) gyorsítótára 
 | `external_id` | TEXT | importált napi tétel kulcsa (pl. `binance:2026-03-04:EUR:buy`), ez akadályozza meg a duplikálást |
 | `created_at` | TEXT | rögzítés ideje |
 
-`rates` – az MNB-től már lekért árfolyamok gyorsítótára (`currency`, `date`, `rate`), hogy ugyanazt a napot ne kelljen újra lekérni.
+`rates` – az MNB-től már lekért árfolyamok gyorsítótára (`currency`, `date`, `rate`), hogy ugyanazt a napot ne kelljen újra lekérni. Hétvégére és ünnepnapra nincs MNB árfolyam, ezért a már feloldott múltbeli napokat a program futás közben a memóriában is megjegyzi (a mai napot nem, mert az MNB napközben tesz közzé); az Áttekintés euróárfolyamát naponta egyszer kéri le.
 
 `settings` – kulcs–érték beállítások (`key`, `value`): `kiserteku` (`on`/`off`, kisértékű ügyletek), `reminders` (`off` = nincs emlékeztető), `emlekezteto:<év>:<szakasz>` (mikor ment ki az adott rendszerértesítés).
 
