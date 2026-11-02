@@ -7,6 +7,7 @@ import { ImportDialog } from "./ImportDialog";
 import { GroupedColumns } from "./Chart";
 import { EntryForm } from "./EntryForm";
 import { DataPage } from "./DataPage";
+import { DetailsDialog, IssuesPanel, Planner } from "./Checks";
 import { findUpdate, installUpdate } from "./updates";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { IconAlert, IconBell, IconChart, IconCheck, IconData, IconDoc, IconDownload, IconHome, IconList, IconLogo, IconTrash, IconUpload } from "./Icons";
@@ -562,6 +563,7 @@ function Overview(props: {
           <h2>Új tétel</h2>
           <EntryForm years={props.years} onSaved={props.onSaved} onError={props.onError} />
         </section>
+        {year === CURRENT_YEAR && !props.empty && <Planner year={year} eurRate={eurRate} txs={txs} />}
       </aside>
     </div>
   );
@@ -592,6 +594,7 @@ function Transactions(props: {
   const [filter, setFilter] = useState<"all" | "in" | "out">("all");
   const [source, setSource] = useState("all");
   const [q, setQ] = useState("");
+  const [details, setDetails] = useState<Tx | null>(null);
   const sources = [...new Set(props.txs.map((t) => t.source))];
   const rows = props.txs.filter(
     (t) =>
@@ -639,6 +642,8 @@ function Transactions(props: {
         </div>
       </header>
 
+      <IssuesPanel txs={props.txs} year={props.year} />
+
       <section className="panel flush">
         {rows.length === 0 ? (
           <p className="empty">Nincs megjeleníthető tétel.</p>
@@ -677,6 +682,18 @@ function Transactions(props: {
                     <td className="num strong">{fmtFt(Math.abs(t.huf))}</td>
                     <td className="note">{t.note}</td>
                     <td className="row-actions">
+                      {IMPORTED(t) && (
+                        <button
+                          className="icon"
+                          title="Eredeti sorok (nyomkövetés)"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDetails(t);
+                          }}
+                        >
+                          <IconList />
+                        </button>
+                      )}
                       <button
                         className="icon danger"
                         title="Törlés"
@@ -708,9 +725,13 @@ function Transactions(props: {
           </div>
         )}
       </section>
+      {details && <DetailsDialog tx={details} onClose={() => setDetails(null)} />}
     </div>
   );
 }
+
+/** Tőzsdéről vagy bankból importált (napi összevont) tétel, amelynek eredeti sorai lehetnek. */
+const IMPORTED = (t: Tx) => t.source !== "kézi" && t.source !== "excel";
 
 function LossDeclarations(props: { years: YearSummary[]; onDeclare: (year: number, declared: boolean) => void }) {
   const missing = props.years.filter((y) => !y.lossDeclared);

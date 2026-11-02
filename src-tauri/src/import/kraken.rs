@@ -40,7 +40,7 @@ pub fn parse(t: &Table) -> Result<Parsed, String> {
         if net == 0.0 {
             continue;
         }
-        flows.push(FiatFlow { date: budapest_date(when), currency, amount: net, fee });
+        flows.push(FiatFlow { date: budapest_date(when), currency, amount: net, fee, raw: row.join(";"), payment: false });
     }
     Ok(Parsed { source: "kraken", format: "Kraken – Ledgers", flows, ignored, warnings: Vec::new() })
 }

@@ -2,7 +2,7 @@
 //! és a tételek. A betűkészlet (DejaVu Sans) a programba van fordítva, mert az ékezetes
 //! betűkhöz (ő, ű) beágyazott font kell.
 
-use crate::{Tx, kind_label, tax::YearSummary};
+use crate::{ImportDetail, Tx, kind_label, tax::YearSummary};
 use printpdf::{Color, IndirectFontRef, Line, Mm, PdfDocument, PdfDocumentReference, PdfLayerReference, Point, Rgb};
 
 const REGULAR: &[u8] = include_bytes!("../fonts/DejaVuSans.ttf");
@@ -20,6 +20,8 @@ pub struct Report<'a> {
     pub years: &'a [YearSummary],
     /// Az év tételei, időrendben.
     pub txs: &'a [Tx],
+    /// Az importált tételek mögötti eredeti sorok (tétel-azonosítóval), időrendben.
+    pub details: &'a [(i64, ImportDetail)],
 }
 
 struct Fonts {
@@ -293,6 +295,29 @@ pub fn write(report: &Report, path: &std::path::Path) -> Result<(), String> {
         MUTED,
     );
 
+    // Melléklet: ügyletszintű nyomkövetés az importált (napi összevont) tételekhez.
+    if !report.details.is_empty() {
+        w.gap(4.0);
+        w.heading(&format!("Melléklet: importált tételek eredeti sorai ({} sor)", report.details.len()));
+        let mut last: Option<(i64, &str)> = None;
+        for (id, d) in report.details {
+            let Some(t) = report.txs.iter().find(|t| t.id == *id) else { continue };
+            if last != Some((*id, d.origin.as_str())) {
+                w.ensure(10.0);
+                w.gap(1.0);
+                let title = format!("{} · {} · {} · {} Ft", t.date, crate::capitalize(&t.source), kind_label(&t.kind, t.amount), ft(t.huf.abs()));
+                w.text(&title, 7.8, MARGIN, true, INK);
+                w.gap(3.4);
+                w.text(&w.fonts.fit(&d.origin, 6.6, PAGE_W - 2.0 * MARGIN), 6.6, MARGIN, false, MUTED);
+                w.gap(3.2);
+                last = Some((*id, d.origin.as_str()));
+            }
+            w.ensure(4.0);
+            w.text(&w.fonts.fit(&d.raw, 6.6, PAGE_W - 2.0 * MARGIN - 3.0), 6.6, MARGIN + 3.0, false, INK);
+            w.gap(3.2);
+        }
+    }
+
     let file = std::fs::File::create(path).map_err(|e| format!("Nem sikerült menteni: {e}"))?;
     w.doc.save(&mut std::io::BufWriter::new(file)).map_err(|e| e.to_string())
 }
@@ -328,7 +353,13 @@ mod tests {
                 fee: 0.0,
             })
             .collect();
-        let report = Report { year: 2026, profile: "Saját", generated: "2026-10-31".into(), years: &years, txs: &txs };
+        let details: Vec<(i64, ImportDetail)> = (0..40)
+            .map(|i| {
+                let raw = format!("1;2026-03-04 10:0{}:00;Spot;Transaction Spend;EUR;-100;", i % 10);
+                (i / 4, ImportDetail { origin: "binance.csv · SHA-256 0123abcd".into(), raw })
+            })
+            .collect();
+        let report = Report { year: 2026, profile: "Saját", generated: "2026-10-31".into(), years: &years, txs: &txs, details: &details };
         let path = std::env::temp_dir().join(format!("kriptomerleg-{}.pdf", std::process::id()));
         write(&report, &path).unwrap();
         let bytes = std::fs::read(&path).unwrap();

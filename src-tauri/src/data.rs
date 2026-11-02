@@ -10,11 +10,17 @@ pub fn export_xlsx(state: State<'_, AppState>, path: String) -> Result<(), Strin
     let conn = state.db.lock().unwrap();
     let txs = all_transactions(&conn, None)?;
     let years = compute_summary(&conn)?;
+    let details = import_details(&conn, None)?;
     drop(conn);
-    write_xlsx(&txs, &years, Path::new(&path))
+    write_xlsx(&txs, &years, &details, Path::new(&path))
 }
 
-pub(crate) fn write_xlsx(txs: &[Tx], years: &[tax::YearSummary], path: &Path) -> Result<(), String> {
+pub(crate) fn write_xlsx(
+    txs: &[Tx],
+    years: &[tax::YearSummary],
+    details: &[(i64, ImportDetail)],
+    path: &Path,
+) -> Result<(), String> {
     use rust_xlsxwriter::{Format, Workbook, XlsxError};
     let x = |e: XlsxError| e.to_string();
     let head = Format::new().set_bold().set_background_color("#E6EFEE");
@@ -88,6 +94,33 @@ pub(crate) fn write_xlsx(txs: &[Tx], years: &[tax::YearSummary], path: &Path) ->
         ws.set_column_width(c, if c == 0 { 8.0 } else { 18.0 }).map_err(x)?;
     }
     ws.set_freeze_panes(1, 0).map_err(x)?;
+
+    // Ügyletszintű nyomkövetés: az importált napi tételek mögötti eredeti sorok.
+    if !details.is_empty() {
+        let by_id: BTreeMap<i64, &Tx> = txs.iter().map(|t| (t.id, t)).collect();
+        let ws = wb.add_worksheet().set_name("Eredeti sorok").map_err(x)?;
+        let heads = ["Tétel dátuma", "Forrás", "Típus", "Deviza", "Összeg", "Forint", "Eredet (fájl / API)", "Eredeti sor"];
+        for (c, h) in heads.iter().enumerate() {
+            ws.write_string_with_format(0, c as u16, *h, &head).map_err(x)?;
+        }
+        let mut r = 0;
+        for (id, d) in details {
+            let Some(t) = by_id.get(id) else { continue };
+            r += 1;
+            ws.write_string(r, 0, &t.date).map_err(x)?;
+            ws.write_string(r, 1, &t.source).map_err(x)?;
+            ws.write_string(r, 2, kind_label(&t.kind, t.amount)).map_err(x)?;
+            ws.write_string(r, 3, &t.currency).map_err(x)?;
+            ws.write_number_with_format(r, 4, t.amount, &money).map_err(x)?;
+            ws.write_number_with_format(r, 5, t.huf as f64, &ft).map_err(x)?;
+            ws.write_string(r, 6, &d.origin).map_err(x)?;
+            ws.write_string(r, 7, &d.raw).map_err(x)?;
+        }
+        for (c, w) in [12.0, 10.0, 12.0, 8.0, 14.0, 14.0, 40.0, 90.0].iter().enumerate() {
+            ws.set_column_width(c as u16, *w).map_err(x)?;
+        }
+        ws.set_freeze_panes(1, 0).map_err(x)?;
+    }
     wb.save(path).map_err(x)
 }
 
@@ -100,6 +133,8 @@ pub fn export_pdf(state: State<'_, AppState>, path: String, year: i32) -> Result
     let mut txs = all_transactions(&conn, Some(year))?;
     txs.reverse();
     let years = compute_summary(&conn)?;
+    let ids: BTreeSet<i64> = txs.iter().map(|t| t.id).collect();
+    let details: Vec<(i64, ImportDetail)> = import_details(&conn, None)?.into_iter().filter(|(id, _)| ids.contains(id)).collect();
     drop(conn);
     let id = state.profile.lock().unwrap().clone();
     let profile = profile_names(&state.dir).get(&id).cloned().unwrap_or(id);
@@ -109,6 +144,7 @@ pub fn export_pdf(state: State<'_, AppState>, path: String, year: i32) -> Result
         generated: Local::now().format("%Y-%m-%d %H:%M").to_string(),
         years: &years,
         txs: &txs,
+        details: &details,
     };
     pdf::write(&report, Path::new(&path))
 }
@@ -371,7 +407,7 @@ mod tests {
             fee: 0.0,
         }];
         let path = std::env::temp_dir().join(format!("kriptomerleg-{}.xlsx", std::process::id()));
-        write_xlsx(&txs, &years, &path).unwrap();
+        write_xlsx(&txs, &years, &[], &path).unwrap();
         let bytes = std::fs::read(&path).unwrap();
         assert!(bytes.starts_with(b"PK"));
         let _ = std::fs::remove_file(path);

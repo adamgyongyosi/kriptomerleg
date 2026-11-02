@@ -1,0 +1,9 @@
+Timestamp (UTC),Transaction Description,Currency,Amount,To Currency,To Amount,Native Currency,Native Amount,Native Amount (in USD),Transaction Kind,Transaction Hash
+2026-01-12 08:14:02,EUR Deposit,EUR,500,,,EUR,500,543.1,viban_deposit,
+2026-01-12 08:20:45,Buy BTC,EUR,-400,BTC,0.0045,EUR,400,434.5,viban_purchase,
+2026-02-03 17:41:09,BTC -> EUR,BTC,-0.0011,,,EUR,95.4,103.6,card_top_up,
+2026-02-03 17:42:30,Card Cashback,CRO,3.21,,,EUR,0.31,0.34,referral_card_cashback,
+2026-03-18 12:05:13,BTC -> EUR,BTC,-0.0007,,,EUR,61.2,66.5,card_top_up,
+2026-04-02 09:00:00,BTC -> ETH,BTC,-0.001,ETH,0.031,EUR,88.1,95.7,crypto_exchange,
+2026-05-20 15:30:00,BTC -> EUR,BTC,-0.0015,EUR,131.7,EUR,131.7,143.1,crypto_viban_exchange,
+2026-05-21 10:00:00,EUR -> Card,EUR,-50,,,EUR,50,54.3,viban_card_top_up,

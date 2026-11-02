@@ -44,7 +44,7 @@ fn parse_new(t: &Table) -> Result<Parsed, String> {
         let fee = fees.and_then(|i| num(cell(row, i))).unwrap_or(0.0).abs();
         let v = v.abs();
         let amount = if buy { -(v + fee) } else { v - fee };
-        flows.push(FiatFlow { date: when.date(), currency, amount, fee });
+        flows.push(FiatFlow { date: when.date(), currency, amount, fee, raw: row.join(";"), payment: false });
     }
     Ok(Parsed { source: "revolut", format: "Revolut – kripto kivonat", flows, ignored, warnings: Vec::new() })
 }
@@ -75,7 +75,7 @@ fn parse_old(t: &Table) -> Result<Parsed, String> {
         if let Some(currency) = fiat(cell(row, currency_col)) {
             // Fiat számla kivonata: az összeg maga a fiat mozgás.
             let fee = fee_col.and_then(|i| num(cell(row, i))).unwrap_or(0.0).abs();
-            flows.push(FiatFlow { date: when.date(), currency, amount: amount - fee, fee });
+            flows.push(FiatFlow { date: when.date(), currency, amount: amount - fee, fee, raw: row.join(";"), payment: false });
             continue;
         }
         // Kripto számla kivonata: + mennyiség = vétel, − = eladás; a fiat érték a Base currency-ben.
@@ -87,7 +87,7 @@ fn parse_old(t: &Table) -> Result<Parsed, String> {
         let inc = fiat_inc.and_then(|i| num(cell(row, i))).map(f64::abs).unwrap_or(gross);
         let fee = (inc - gross).abs();
         let amount = if amount > 0.0 { -(gross + fee) } else { gross - fee };
-        flows.push(FiatFlow { date: when.date(), currency, amount, fee });
+        flows.push(FiatFlow { date: when.date(), currency, amount, fee, raw: row.join(";"), payment: false });
     }
     Ok(Parsed { source: "revolut", format: "Revolut – kripto kivonat (régi)", flows, ignored, warnings: Vec::new() })
 }

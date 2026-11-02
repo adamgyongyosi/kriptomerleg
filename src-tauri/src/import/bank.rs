@@ -102,7 +102,7 @@ pub fn parse(t: &Table) -> Result<Parsed, String> {
         if !matched.contains(&name) {
             matched.push(name);
         }
-        flows.push(FiatFlow { date: when.date(), currency: cur, amount: net, fee });
+        flows.push(FiatFlow { date: when.date(), currency: cur, amount: net, fee, raw: row.join(";"), payment: false });
     }
 
     let mut warnings = vec![

@@ -81,7 +81,7 @@ fn parse_trades(t: &Table) -> Result<Parsed, String> {
         };
         let v = v.abs();
         let amount = if buy { -(v + fee_fiat) } else { v - fee_fiat };
-        flows.push(FiatFlow { date: budapest_date(when), currency: quote, amount, fee: fee_fiat });
+        flows.push(FiatFlow { date: budapest_date(when), currency: quote, amount, fee: fee_fiat, raw: row.join(";"), payment: false });
     }
 
     let mut warnings = Vec::new();
@@ -108,11 +108,11 @@ fn parse_convert(t: &Table) -> Result<Parsed, String> {
         let (from, to) = (fiat(cell(row, fc)), fiat(cell(row, tc)));
         match (from, to) {
             (Some(currency), None) => match num(cell(row, fa)) {
-                Some(a) => flows.push(FiatFlow { date, currency, amount: -a.abs(), fee: 0.0 }),
+                Some(a) => flows.push(FiatFlow { date, currency, amount: -a.abs(), fee: 0.0, raw: row.join(";"), payment: false }),
                 None => ignored += 1,
             },
             (None, Some(currency)) => match num(cell(row, ta)) {
-                Some(a) => flows.push(FiatFlow { date, currency, amount: a.abs(), fee: 0.0 }),
+                Some(a) => flows.push(FiatFlow { date, currency, amount: a.abs(), fee: 0.0, raw: row.join(";"), payment: false }),
                 None => ignored += 1,
             },
             _ => ignored += 1,

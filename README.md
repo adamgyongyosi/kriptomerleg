@@ -6,15 +6,20 @@
 
 Weboldal: <https://adamgyongyosi.github.io/kriptomerleg/> (a `site/` mappából, lásd [Weboldal](#weboldal)). Repó: <https://github.com/adamgyongyosi/kriptomerleg> (2026. október 31-ig `kripto-ado` volt a neve; a GitHub a régi címekről átirányít).
 
-- Gyors rögzítés: Befizetés / Kivétel / Fizetés kriptóval kapcsoló, € / Ft váltó és a „…” menüben USD, GBP, CHF (alapértelmezés: EUR, minden mentés után visszaáll), és élőben látszik, mennyivel változik az évi adó. Mínusz jellel beírt összeg automatikusan kivétel. Az összeg mező gépelés közben ezres tagolást kap (`899 100`); `1.000.000` és `1.000,50` alakban beillesztve is jól értelmezi.
+- Gyors rögzítés: Befizetés / Kivétel / Fizetés kriptóval / Jövedelem kapcsoló, € / Ft váltó és a „…” menüben USD, GBP, CHF (alapértelmezés: EUR, minden mentés után visszaáll), és élőben látszik, mennyivel változik az évi adó. Mínusz jellel beírt összeg automatikusan kivétel. Az összeg mező gépelés közben ezres tagolást kap (`899 100`); `1.000.000` és `1.000,50` alakban beillesztve is jól értelmezi.
 - Devizás (EUR, USD, GBP, CHF) tételeknél az MNB hivatalos árfolyamát automatikusan lekéri a teljesítés napjára (hétvégén/ünnepnap az utolsó közzétettet); kattintásra kézi (pl. banki) árfolyam is megadható. Forintos tétel is rögzíthető.
 - Éves eredmény = kivételek − befizetések; nyereség után 15% SZJA.
 - **Fizetés kriptóval:** ha kriptóval fizetsz árut vagy szolgáltatást (ajándékkártya, utazás), annak forintértéke bevételnek számít, mint egy kivétel. Külön tételtípus („Fizetés kriptóval”), a CSV-exportban is.
+- **Kriptóban kapott jövedelem:** ha bért, vállalkozói díjat vagy más ellenértéket kriptóban kapsz, a megszerzéskor más jogcímen már adózott érték kiadásnak számít (mint egy befizetés), így a későbbi eladáskor nem adózol rá még egyszer. Külön tételtípus („Kriptóban kapott jövedelem”); magát a bért vagy díjat a saját szabályai szerint kell bevallani, azt az app nem számolja.
+- **Adótervező („mi lenne, ha”):** az Áttekintésen megadhatsz egy tervezett kivételt (€ vagy Ft), és látod, mennyi adóval jár, ha idén vagy ha jövőre veszed ki, melyik a kedvezőbb, és belefér-e a kisértékű ügylet keretébe (ügyletenkénti és éves határ, idén eddig felhasznált összeg, volt-e már ma bevételt hozó ügylet).
+- **Hiányzó tételek felderítése:** a *Tételek* oldal tetején az Ellenőrzés jelzi, ha bevételt hozó tétel előtt nincs rögzített befizetés vagy vétel, ha ugyanarra az évre banki kivonat és tőzsdei import is van, ha két forrásból közel azonos tétel szerepel ugyanarra a napra, ha egy tőzsdei forrásban fél évnél hosszabb hézag van, illetve ha az utolsó import régi.
 - **Adómentesen még kivehető:** az Áttekintésen látszik, mekkora kivételig (vagy kriptós fizetésig) nem keletkezik adó az évben, a folyó évben euróban is, a mai MNB árfolyamon.
 - Adókiegyenlítés: a veszteség 15%-a levonható, legfeljebb a tárgyévi és az előző két évi kriptoadó erejéig; a 2025-ös bevallástól a veszteség nem évül el (2025. évi LXXXIII. tv.). Korábbi év vesztesége csak akkor, ha azt annak az évnek a bevallásában feltüntették – ezt évenként jelölni kell (lásd [Az adószámítás szabályai](#az-adószámítás-szabályai)).
 - Bevallási segéd: mit kell a 25SZJA 164. sorába és a 06-os lap 202–209. sorába írni (NAV kitöltési útmutató alapján). A kitöltendő sorok CSV-be is menthetők (nyomtatvány, lap, sor, oszlop, megnevezés, érték).
 - **Éves nyilvántartás PDF-ben** (Szja tv. 67/C. §): összesítő, veszteség-nyilvántartás (67/C. § (7a)) és az év összes tétele MNB árfolyammal, oldalszámozva – archiváláshoz, ellenőrzéshez. A betűkészlet (DejaVu Sans, `src-tauri/fonts/`, licenc: `DEJAVU-LICENSE.txt`) a programba van fordítva.
-- **Tőzsdei import:** Binance, Revolut, Kraken és Bybit export (CSV/Excel) beolvasása – a fiat ↔ kripto ügyletek díjakkal együtt, naponta összevonva, MNB árfolyamon. Ugyanaz a fájl újra importálva frissít, nem duplikál; ha egy nap már szerepel más forrásból (azonos nap, irány, legfeljebb 1% eltérés), az előnézet „lehet dupla” jelölést ad, és alapból kihagyja.
+- **Tőzsdei import:** Binance, Revolut, Kraken, Bybit és Crypto.com export (CSV/Excel) beolvasása, illetve Binance, Bybit és Kraken lekérés közvetlenül, csak olvasó API kulccsal – a fiat ↔ kripto ügyletek díjakkal együtt, naponta összevonva, MNB árfolyamon. Ugyanaz a fájl újra importálva frissít, nem duplikál; ha egy nap már szerepel más forrásból (azonos nap, irány, legfeljebb 1% eltérés), az előnézet „lehet dupla” jelölést ad, és alapból kihagyja.
+- **Kriptokártyás fizetés importja:** a Crypto.com App exportjából a Visa kártya kriptós feltöltései (`card_top_up` – ekkor válik a kripto fiattá) „Fizetés kriptóval” tételként kerülnek be. A Binance exportjában a kártyás költés („Binance Card Spending”) fiat egyenlegből nem számít ügyletnek; ha kriptóból fizettél, a fájlban nincs euróérték, ezért az app napra és érmére bontva kiírja, mit kell kézzel rögzíteni.
+- **Ügyletszintű nyomkövetés:** az importált napi tétel mögé az app eltárolja az eredeti sorokat és a forrást (fájlnév és SHA-256 ujjlenyomat, vagy API és lekérési idő). A *Tételek* oldalon a tétel sorában megnézhetők, az Excel-exportban külön „Eredeti sorok” lapon, az éves PDF-ben mellékletként szerepelnek – így ha a NAV a DAC8 alapján tőzsdei adatokkal veti össze a bevallást (2027-től), ügyletenként igazolható, miből jött az összeg.
 - **Kisértékű ügyletek** (67/C. § (2)) kezelése bekapcsolható: a minimálbér 10%-áig terjedő, napi egyetlen bevétel kihagyható az eredményből (lásd lent).
 - **Önellenőrzés-segéd:** ha egy korábbi év vesztesége kimaradt a bevallásból, a Bevallási segéd megmutatja, melyik nyomtatvány melyik sorába kell pótolni, meddig, és mennyivel csökkenne utána az adó.
 - **Határidő-emlékeztető:** március 15. (eSZJA tervezet) és május 20. között az app jelzi az előző évi kriptoadót, adókiegyenlítést vagy bevallandó veszteséget; szakaszonként egyszer rendszerértesítést is küld (kikapcsolható).
@@ -68,11 +73,40 @@ NixOS-re lásd lent.
 | Revolut | Kripto → … → Statement (kivonat), CSV vagy Excel | `Buy` / `Sell` sorok értéke és díja (újabb formátum); `EXCHANGE` sorok fiat összege (régi formátum) |
 | Kraken | History → Export → Ledgers | `trade` / `spend` / `receive` sorok fiat összege, díj levonva |
 | Bybit | Orders → Spot Order → Trade History → Export; Convert → History → Export | Fiat párok (pl. BTCEUR) kereskedései díjjal; fiat ↔ kripto konvertálások |
+| Crypto.com | App → Accounts → Transaction History → Export, „Crypto Wallet” (`crypto_transactions_record`) | `card_top_up` (Visa kártya feltöltése kriptóból) „Fizetés kriptóval” tételként a `Native Amount` összegével; fiat → kripto vétel (`viban_purchase`, `crypto_purchase`) és kripto → fiat eladás (`crypto_viban_exchange`). Cashback, visszatérítés, fiatból töltött kártya, kripto–kripto csere kimarad. |
 | Bank (Revolut, Wise, magyar bankok) | a netbank számlakivonat-exportja (CSV/Excel) | A kriptotőzsdékre (Binance, Kraken/Payward, Bybit, Coinbase, Bitstamp, Bitpanda, OKX, KuCoin, Crypto.com, …) küldött utalás = befizetés, onnan érkező = kivétel. Közelítés: ha van tőzsdei export, az pontosabb. |
 
-**Kraken API:** az Importálás ablakban a „Kraken: lekérés közvetlenül, API kulccsal” a főkönyvet (Ledgers) a Kraken API-ján kéri le, és ugyanúgy dolgozza fel, mint a Ledgers exportot. A kulcshoz csak „Query Ledger Entries” jog kell; a kulcsot és a titkot az app nem menti. A lekérés oldalanként 50 sort ad, a Kraken lekérési korlátja miatt oldalanként kb. 2,5 mp. A többi tőzsde API-ja (Binance, Bybit) még nincs bekötve.
+**API-s lekérés (Binance, Bybit, Kraken):** az Importálás ablakban a „Lekérés közvetlenül, API kulccsal” alatt választható a tőzsde. A kulcsnak csak olvasási joga legyen; a kulcsot és a titkot az app nem menti, csak az adott lekérésre használja. Az eredmény ugyanúgy előnézetbe kerül, és ugyanazzal a kulccsal (`binance:…`, `bybit:…`, `kraken:…`) mentődik, mint a fájlos import, így a kettő nem duplikál.
+
+- **Kraken:** a főkönyvet (Ledgers) kéri le, és ugyanúgy dolgozza fel, mint a Ledgers exportot. Jog: „Query Ledger Entries”. Oldalanként 50 sor, a Kraken lekérési korlátja miatt oldalanként kb. 2,5 mp.
+- **Binance** és **Bybit:** lásd lent, [API-s lekérés részletei](#api-s-lekérés-részletei).
 
 A formátumot az oszlopnevek alapján ismeri fel. A menük neve a tőzsdei appok frissítésével változhat.
+
+### API-s lekérés részletei
+
+Mindkét modul (`binance_api.rs`, `bybit_api.rs`) a tőzsde szerveridejéhez igazítja az aláírás időbélyegét, lekéréskor ellenőrzi, hogy a kulcs csak olvasó-e (ha írási joga is van, figyelmeztet), és tartja a tőzsde lekérési korlátait (várakozás, 429-es válasznál újrapróbálás). A hibás kulcsról, aláírásról, órahibáról és IP-tiltásról magyar hibaüzenetet ad; ha csak egy végpont nem érhető el a fióknak, a többit lekéri, és figyelmeztet. Biztonsági korlát: legfeljebb 5000 kérés.
+
+**Binance** (kulcs: API Management → rendszer által generált, csak „Enable Reading”):
+
+| Végpont | Mit ad |
+|---|---|
+| `/api/v3/myTrades` | spot ügyletek minden olyan páron, ahol az egyik oldal fiat (a párlistát az `exchangeInfo` adja); a díj, ha kriptóban van, az ügylet árfolyamán számolva |
+| `/sapi/v1/convert/tradeFlow` | Convert ügyletek fiat ↔ kripto (30 napos ablakokkal) |
+| `/sapi/v1/fiat/payments` | bankkártyás/banki kriptóvásárlás és -eladás (csak a teljesítettek) |
+
+Ismert korlátok: a P2P és a margin ügyletek nincsenek benne; a teljesen kivezetett párok ügyletei nem kérhetők le; a `fiat/payments` eladásainak mezőit a dokumentáció nem részletezi (az app az árfolyamból dönti el, melyik a fiat összeg, és figyelmeztet, hogy érdemes ellenőrizni). Sok fiat pár esetén a lekérés fél percnél tovább tarthat.
+
+**Bybit** (kulcs: API → Create New Key → System-generated, „Read-Only”):
+
+| Végpont | Mit ad |
+|---|---|
+| `/v5/execution/list?category=spot` | spot ügyletek fiat párokon (7 napos ablakokkal); a Bybit API legfeljebb kb. 2 évre visszamenőleg ad adatot – a régebbit fájlexportból importáld |
+| `/v5/asset/exchange/query-convert-history`, `/v5/asset/exchange/order-record`, `/v5/fiat/query-trade-history` | Convert ügyletek fiat ↔ kripto (az átfedő források ismétlődését kiszűri) |
+
+Ismert korlátok: az EGT-s (bybit.eu) fiókok API-ja a Bybit dokumentációja szerint csak brókeres, harmadik feles alkalmazásoknak érhető el, így magyar fióknál előfordulhat, hogy a lekérés nem működik – ilyenkor a fájlexport a megoldás. Klasszikus (nem Unified) fióknál a régi spot ügyletek hiányosak lehetnek.
+
+Mindkét API-modult a hivatalos dokumentáció példaválaszaival teszteltük; valódi kulccsal végzett lekérés eredményét az előnézetben érdemes összevetni a tőzsde felületével.
 
 **Példafájlok:** az [`examples/`](examples/) mappában minden formátumhoz van egy kitalált adatokkal kitöltött, importálható minta (és a régi Excel nyilvántartás mintája is). A [`examples/README.md`](examples/README.md) leírja, melyik fájl mit mutat be, és milyen szerkezetű lehet a saját exportod.
 
@@ -87,10 +121,12 @@ A formátumot az oszlopnevek alapján ismeri fel. A menük neve a tőzsdei appok
 - Ha az adott évben **kézi vagy Excel-tétel** is van, figyelmeztet: ha azok ugyanazokat a vásárlásokat jelentik (pl. a tőzsdére utalt euró), töröld őket, különben a kiadás duplán számít.
 - A *Tételek* oldalon forrás szerint szűrhetsz, és egy forrás adott évi tételeit egyben törölheted.
 - Figyelmeztet, ha olyan sort talál, amit kézzel kell rögzítened (pl. Binance kártyás vásárlás fiat összeg nélkül, P2P).
+- **Kriptokártyák:** adózási szempontból az a pillanat számít, amikor a kripto fiattá válik. A Crypto.com Visa kártyánál ez a kriptós kártyafeltöltés (`card_top_up`), a Binance kártyánál a fizetés („Binance Card Spending” kriptó sora). A fiat egyenlegből fizetett kártyás vásárlás nem kriptós ügylet. A Bybit és a Binance kártya saját kivonatának oszlopai nincsenek nyilvánosan dokumentálva, ezért ezeket még nem olvassa be – ha elküldöd egy (kitakart) mintádat, bekerülhet. Addig a „Fizetés kriptóval” típussal kézzel rögzíthetők. (A Binance kártya az EGT-ben 2023. december 20-án megszűnt.)
+- Minden napi tétel mögé elmenti az **eredeti sorokat** és a forrásfájl nevét és SHA-256 ujjlenyomatát (API-nál a lekérés idejét); újraimportáláskor ezek is az új forráséra cserélődnek, a tétel törlésekor törlődnek.
 
 ## Adatok tárolása
 
-Minden adat helyben, profilonként egy SQLite adatbázisfájlban van, az app nem küld adatot sehova. (Az adatmappa neve a Kriptomérleg átnevezés után is `hu.kriptoado.app` maradt, hogy a korábban rögzített adatok megmaradjanak.) Az egyetlen hálózati forgalom az MNB árfolyam lekérése.
+Minden adat helyben, profilonként egy SQLite adatbázisfájlban van, az app nem küld adatot sehova. (Az adatmappa neve a Kriptomérleg átnevezés után is `hu.kriptoado.app` maradt, hogy a korábban rögzített adatok megmaradjanak.) Hálózati forgalom: az MNB árfolyam lekérése, a frissítéskeresés (kikapcsolható), és csak ha kéred, a tőzsdei API-lekérés (Binance, Bybit, Kraken).
 
 | Rendszer | Hely |
 |---|---|
@@ -125,13 +161,15 @@ Ugyanebben a mappában a beépített böngészőmotor (WebView) gyorsítótára 
 | `huf` | INTEGER | forintösszeg (`amount × rate`, egészre kerekítve) – az adószámítás ebből dolgozik |
 | `note` | TEXT | megjegyzés (importnál pl. „Binance · 3 vétel · díj 1,20 EUR”) |
 | `source` | TEXT | `kézi`, `excel`, `binance`, `revolut`, `kraken`, `bybit` |
-| `kind` | TEXT | `deposit` / `withdrawal` / `payment` (kézi; `payment` = kriptóval fizetett áru, szolgáltatás), `buy` / `sell` (tőzsdei import) |
+| `kind` | TEXT | `deposit` / `withdrawal` / `payment` / `income` (kézi; `payment` = kriptóval fizetett áru, szolgáltatás; `income` = kriptóban kapott bér, ellenérték), `buy` / `sell` (tőzsdei import) |
 | `fee` | REAL | ebből díj a tétel devizájában (tájékoztató) |
 | `trades` | INTEGER | hány ügyletből áll a napi tétel (kézinél 1; a kisértékű ügylet szabályához) |
 | `external_id` | TEXT | importált napi tétel kulcsa (pl. `binance:2026-03-04:EUR:buy`), ez akadályozza meg a duplikálást |
 | `created_at` | TEXT | rögzítés ideje |
 
 `rates` – az MNB-től már lekért árfolyamok gyorsítótára (`currency`, `date`, `rate`), hogy ugyanazt a napot ne kelljen újra lekérni. Hétvégére és ünnepnapra nincs MNB árfolyam, ezért a már feloldott múltbeli napokat a program futás közben a memóriában is megjegyzi (a mai napot nem, mert az MNB napközben tesz közzé); az Áttekintés euróárfolyamát naponta egyszer kéri le.
+
+`import_details` – ügyletszintű nyomkövetés: az importált napi tételek mögötti eredeti sorok (`external_id` – a tétel kulcsa, `origin` – fájlnév és SHA-256, vagy API és lekérési idő, `raw` – az eredeti sor pontosvesszővel összefűzve, API-nál a rekord fő mezői). A tétel törlésekor egy trigger ezeket is törli.
 
 `settings` – kulcs–érték beállítások (`key`, `value`): `kiserteku` (`on`/`off`, kisértékű ügyletek), `reminders` (`off` = nincs emlékeztető), `emlekezteto:<év>:<szakasz>` (mikor ment ki az adott rendszerértesítés).
 
@@ -143,7 +181,7 @@ Az éves összesítő és az adó nincs eltárolva, mindig a tételekből számo
 
 **ÁNYK XML:** az ÁNYK importálható XML-formátuma (`<nyomtatvanyok>`, `<mezo eazon="…">`) ismert, de a 25SZJA kriptós mezőinek kódjai (164., 202–209. sor) nincsenek nyilvánosan publikálva, évente változhatnak, és a NAV az ÁNYK-t 2026. december 31-ével kivezeti (utódja az ONYA, amelynek XML-importja még nincs dokumentálva). Ezért az app most nem készít XML-t; helyette a Bevallási segéd a kitöltendő sorokat CSV-be menti.
 
-**Export:** Excel (.xlsx, „Tételek” és „Éves összesítő” lap, számként tárolt összegekkel, szűrővel) és CSV (pontosvessző, tizedesvessző, UTF-8 BOM – Excelben közvetlenül megnyitható).
+**Export:** Excel (.xlsx, „Tételek” és „Éves összesítő” lap, számként tárolt összegekkel, szűrővel; ha van importált tétel, „Eredeti sorok” lap is) és CSV (pontosvessző, tizedesvessző, UTF-8 BOM – Excelben közvetlenül megnyitható).
 
 ## Fejlesztés
 
@@ -270,12 +308,13 @@ Arculat (logó, színek, hangnem): [`brand/README.md`](brand/README.md).
 - `src-tauri/src/tax.rs` – adószámítás, adókiegyenlítés, kisértékű ügylet, minimálbér-tábla (unit tesztekkel)
 - `src-tauri/src/mnb.rs` – MNB SOAP árfolyam-lekérés
 - `src-tauri/src/excel.rs` – régi Excel import
-- `src-tauri/src/import/` – tőzsdei import: közös CSV/Excel olvasó, szám- és dátumértelmezés (`mod.rs`), formátumonként `binance.rs`, `revolut.rs`, `kraken.rs`, `bybit.rs`, `bank.rs` (banki kivonat), `kraken_api.rs` (Kraken API, aláírással) – mintafájlos tesztekkel
+- `src-tauri/src/import/` – tőzsdei import: közös CSV/Excel olvasó, szám- és dátumértelmezés (`mod.rs`), formátumonként `binance.rs`, `revolut.rs`, `kraken.rs`, `bybit.rs`, `cryptocom.rs`, `bank.rs` (banki kivonat), `kraken_api.rs`, `binance_api.rs`, `bybit_api.rs` (API-s lekérés, aláírással) – mintafájlos tesztekkel
 - `src-tauri/src/lib.rs` – SQLite tárolás, Tauri parancsok, CSV export, önellenőrzés-segéd
+- `src-tauri/src/checks.rs` – ellenőrzés (hiányzó, dupla, hézagos tételek) és adótervező (kivétel idén vagy jövőre, kisértékű keret)
 - `src-tauri/src/data.rs` – Excel és PDF export, beállítások, mentés/visszaállítás, profilok, fájlválasztó-ellenőrzés
 - `src-tauri/src/backup.rs` – mentésfájl írása/olvasása, titkosítás, heti automatikus mentés
 - `src-tauri/src/pdf.rs` – éves nyilvántartás PDF-ben
-- `src/` – React felület: `App.tsx` (oldalak), `EntryForm.tsx`, `Filing.tsx` (bevallási segéd), `DataPage.tsx` (adatok és mentés), `ImportDialog.tsx`, `Dialogs.tsx` (appon belüli párbeszédablakok), `updates.ts` (frissítő); tesztek: `*.test.ts(x)`
+- `src/` – React felület: `App.tsx` (oldalak), `EntryForm.tsx`, `Filing.tsx` (bevallási segéd), `DataPage.tsx` (adatok és mentés), `ImportDialog.tsx`, `Checks.tsx` (ellenőrzés, eredeti sorok, adótervező), `Dialogs.tsx` (appon belüli párbeszédablakok), `updates.ts` (frissítő); tesztek: `*.test.ts(x)`
 - `packaging/` – AUR és Flatpak csomagleírás
 - `site/` – landing oldal (`index.html`, `og-image.png`, `sitemap.xml`, `llms.txt`); `brand/og-card.html` – a megosztási kép forrása
 - `brand/` – logó és arculati leírás

@@ -1,4 +1,5 @@
 mod backup;
+mod checks;
 mod data;
 mod excel;
 mod import;
@@ -78,13 +79,19 @@ struct TxInput {
     rate: Option<f64>,
     note: Option<String>,
     /// "payment": kriptóval fizetett áru vagy szolgáltatás (bevételnek számít, mint a kivétel).
+    /// "income": kriptóban kapott bér vagy ellenérték; a megszerzéskor más jogcímen adózott érték
+    /// kiadásnak számít (mint a befizetés).
     #[serde(default)]
     kind: Option<String>,
 }
 
 impl TxInput {
     fn kind(&self) -> &'static str {
-        if self.amount < 0.0 && self.kind.as_deref() == Some("payment") { "payment" } else { manual_kind(self.amount) }
+        match self.kind.as_deref() {
+            Some("payment") if self.amount < 0.0 => "payment",
+            Some("income") if self.amount > 0.0 => "income",
+            _ => manual_kind(self.amount),
+        }
     }
 }
 
@@ -150,6 +157,24 @@ fn init_db(conn: &Connection) -> rusqlite::Result<()> {
         conn.execute_batch(
             "ALTER TABLE transactions ADD COLUMN trades INTEGER NOT NULL DEFAULT 1;
             PRAGMA user_version = 2;",
+        )?;
+    }
+    if version < 3 {
+        // Ügyletszintű nyomkövetés: az összevont importált tétel mögötti eredeti sorok és a forrásfájl.
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS import_details (
+                id          INTEGER PRIMARY KEY,
+                external_id TEXT NOT NULL,
+                origin      TEXT NOT NULL,
+                raw         TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS import_details_external ON import_details(external_id);
+            CREATE TRIGGER IF NOT EXISTS import_details_cleanup AFTER DELETE ON transactions
+                WHEN old.external_id IS NOT NULL
+            BEGIN
+                DELETE FROM import_details WHERE external_id = old.external_id;
+            END;
+            PRAGMA user_version = 3;",
         )?;
     }
     Ok(())
@@ -534,25 +559,35 @@ struct ImportPreview {
     warnings: Vec<String>,
     /// Kézzel vagy Excelből rögzített tételek az érintett években – duplán számolhatnak.
     manual_in_years: Vec<YearCount>,
+    /// Honnan jött az adat (fájlnév és ujjlenyomat, vagy API és időpont) – a nyomkövetéshez.
+    origin: String,
 }
 
 /// Tőzsdei/banki export beolvasása előnézetre (még nem ment semmit).
 #[tauri::command(async)]
 fn preview_import(state: State<'_, AppState>, path: String) -> Result<ImportPreview, String> {
-    preview_parsed(&state, import::parse_file(&path)?)
+    preview_parsed(&state, import::parse_file(&path)?, import::file_origin(&path)?)
 }
 
-/// Kraken főkönyv lekérése csak olvasó API kulccsal, előnézetre. A kulcsot nem tároljuk.
+/// Tőzsdei ügyletek lekérése csak olvasó API kulccsal (Kraken, Binance, Bybit), előnézetre.
+/// A kulcsot nem tároljuk.
 #[tauri::command(async)]
-fn preview_kraken_api(state: State<'_, AppState>, key: String, secret: String, since: String) -> Result<ImportPreview, String> {
+fn preview_api(state: State<'_, AppState>, exchange: String, key: String, secret: String, since: String) -> Result<ImportPreview, String> {
     if key.trim().is_empty() || secret.trim().is_empty() {
         return Err("Add meg az API kulcsot és a titkot.".into());
     }
     let start = parse_date(&since)?.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp();
-    preview_parsed(&state, import::fetch_kraken(&key, &secret, start)?)
+    let parsed = match exchange.as_str() {
+        "kraken" => import::fetch_kraken(&key, &secret, start)?,
+        "binance" => import::fetch_binance(&key, &secret, start * 1000)?,
+        "bybit" => import::fetch_bybit(&key, &secret, start * 1000)?,
+        other => return Err(format!("Ismeretlen tőzsde: {other}")),
+    };
+    let origin = format!("{} API · lekérve {} · {since} óta", capitalize(&exchange), Local::now().format("%Y-%m-%d %H:%M"));
+    preview_parsed(&state, parsed, origin)
 }
 
-fn preview_parsed(state: &AppState, parsed: import::Parsed) -> Result<ImportPreview, String> {
+fn preview_parsed(state: &AppState, parsed: import::Parsed, origin: String) -> Result<ImportPreview, String> {
     let mut rows = import::aggregate(parsed.source, &parsed.flows);
     if rows.is_empty() {
         return Err(format!(
@@ -590,6 +625,7 @@ fn preview_parsed(state: &AppState, parsed: import::Parsed) -> Result<ImportPrev
         ignored: parsed.ignored,
         warnings: parsed.warnings,
         manual_in_years,
+        origin,
     })
 }
 
@@ -611,7 +647,12 @@ fn find_duplicate(conn: &Connection, source: &str, r: &import::ImportRow) -> Res
 
 /// A kiválasztott összevont tételek mentése MNB árfolyammal. A már meglévő kulcsú tételeket frissíti.
 #[tauri::command]
-async fn commit_import(state: State<'_, AppState>, source: String, rows: Vec<import::ImportRow>) -> Result<ImportResult, String> {
+async fn commit_import(
+    state: State<'_, AppState>,
+    source: String,
+    rows: Vec<import::ImportRow>,
+    origin: Option<String>,
+) -> Result<ImportResult, String> {
     // Devizánként egyetlen MNB lekérés a teljes időszakra.
     let mut ranges: BTreeMap<String, (NaiveDate, NaiveDate)> = BTreeMap::new();
     for r in rows.iter().filter(|r| r.currency != "HUF") {
@@ -636,6 +677,10 @@ async fn commit_import(state: State<'_, AppState>, source: String, rows: Vec<imp
         .map_err(err)?;
     let mut exists_stmt = conn.prepare_cached("SELECT EXISTS(SELECT 1 FROM transactions WHERE external_id = ?1)").map_err(err)?;
     let mut upsert = conn.prepare_cached(UPSERT_IMPORTED).map_err(err)?;
+    let mut clear_details = conn.prepare_cached("DELETE FROM import_details WHERE external_id = ?1").map_err(err)?;
+    let mut add_detail =
+        conn.prepare_cached("INSERT INTO import_details (external_id, origin, raw) VALUES (?1, ?2, ?3)").map_err(err)?;
+    let origin = origin.unwrap_or_default();
     let (mut imported, mut updated) = (0, 0);
     for r in &rows {
         let (rate, rate_source, rate_date): (f64, &str, Option<String>) = if r.currency == "HUF" {
@@ -646,11 +691,12 @@ async fn commit_import(state: State<'_, AppState>, source: String, rows: Vec<imp
                 .map_err(|_| format!("Nincs MNB {} árfolyam erre a napra: {}", r.currency, r.date))?;
             (rate, "MNB", Some(d))
         };
-        // Vétel = kiadás (pozitív), eladás = bevétel (negatív), mint a kézi tételeknél.
+        // Vétel = kiadás (pozitív), eladás és kártyás fizetés = bevétel (negatív), mint a kézi tételeknél.
         let amount = if r.kind == "buy" { r.amount } else { -r.amount };
         let huf = (amount * rate).round() as i64;
         let label = match r.kind.as_str() {
             "buy" => "vétel",
+            "payment" => "kártyás fizetés",
             _ => "eladás",
         };
         let mut note = format!("{} · {} {label}", capitalize(&source), r.count);
@@ -661,9 +707,14 @@ async fn commit_import(state: State<'_, AppState>, source: String, rows: Vec<imp
         upsert
             .execute(params![r.date, r.currency, amount, rate, rate_source, rate_date, huf, note, source, r.kind, r.fee, r.key, r.count as i64])
             .map_err(err)?;
+        // Újraimportáláskor a tétel mögötti eredeti sorok is az új forráséra cserélődnek.
+        clear_details.execute([&r.key]).map_err(err)?;
+        for raw in &r.details {
+            add_detail.execute(params![r.key, origin, raw]).map_err(err)?;
+        }
         if exists { updated += 1 } else { imported += 1 }
     }
-    drop((rate_of, exists_stmt, upsert));
+    drop((rate_of, exists_stmt, upsert, clear_details, add_detail));
     conn.commit().map_err(err)?;
     Ok(ImportResult { imported, skipped: updated })
 }
@@ -679,6 +730,29 @@ const UPSERT_IMPORTED: &str = "INSERT INTO transactions
 fn capitalize(s: &str) -> String {
     let mut c = s.chars();
     c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default()
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ImportDetail {
+    origin: String,
+    raw: String,
+}
+
+/// Egy importált (napi összevont) tétel mögötti eredeti sorok.
+#[tauri::command]
+fn transaction_details(state: State<'_, AppState>, id: i64) -> Result<Vec<ImportDetail>, String> {
+    import_details(&state.db.lock().unwrap(), Some(id)).map(|v| v.into_iter().map(|(_, d)| d).collect())
+}
+
+/// Az importált tételek eredeti sorai (`id` nélkül mind), a tétel azonosítójával.
+fn import_details(conn: &Connection, id: Option<i64>) -> Result<Vec<(i64, ImportDetail)>, String> {
+    conn.prepare(
+        "SELECT t.id, d.origin, d.raw FROM import_details d JOIN transactions t ON t.external_id = d.external_id
+         WHERE ?1 IS NULL OR t.id = ?1 ORDER BY t.date, t.id, d.id",
+    )
+    .and_then(|mut s| s.query_map([id], |r| Ok((r.get(0)?, ImportDetail { origin: r.get(1)?, raw: r.get(2)? })))?.collect())
+    .map_err(err)
 }
 
 /// Egy forrásból (pl. "binance") importált tételek törlése, opcionálisan egy évre szűkítve.
@@ -700,6 +774,7 @@ fn kind_label(kind: &str, amount: f64) -> &'static str {
         "buy" => "Vétel",
         "sell" => "Eladás",
         "payment" => "Fizetés kriptóval",
+        "income" => "Kriptóban kapott jövedelem",
         _ if amount > 0.0 => "Befizetés",
         _ => "Kivétel",
     }
@@ -804,7 +879,10 @@ pub fn run() {
             preview_tax,
             import_excel,
             preview_import,
-            preview_kraken_api,
+            preview_api,
+            transaction_details,
+            checks::find_issues,
+            checks::plan_withdrawal,
             commit_import,
             delete_by_source,
             set_loss_declared,
@@ -888,6 +966,7 @@ mod tests {
             fee: 0.0,
             count: 1,
             duplicate: None,
+            details: Vec::new(),
         };
         assert!(find_duplicate(&conn, "binance", &row("buy", 502.0)).unwrap().is_some());
         assert!(find_duplicate(&conn, "binance", &row("buy", 600.0)).unwrap().is_none());
@@ -913,6 +992,23 @@ mod tests {
     }
 
     #[test]
+    fn keeps_import_details_until_transaction_is_deleted() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+        conn.execute(UPSERT_IMPORTED, params!["2026-03-04", "EUR", 400.0, 390.0, "MNB", "2026-03-04", 156000, "x", "binance", "buy", 0.0, "k1", 2])
+            .unwrap();
+        for raw in ["sor 1", "sor 2"] {
+            conn.execute("INSERT INTO import_details (external_id, origin, raw) VALUES ('k1', 'f.csv', ?1)", [raw]).unwrap();
+        }
+        let id: i64 = conn.query_row("SELECT id FROM transactions", [], |r| r.get(0)).unwrap();
+        let d = import_details(&conn, Some(id)).unwrap();
+        assert_eq!(d.iter().map(|(_, d)| d.raw.as_str()).collect::<Vec<_>>(), ["sor 1", "sor 2"]);
+        conn.execute("DELETE FROM transactions WHERE id = ?1", [id]).unwrap();
+        let left: i64 = conn.query_row("SELECT COUNT(*) FROM import_details", [], |r| r.get(0)).unwrap();
+        assert_eq!(left, 0);
+    }
+
+    #[test]
     fn crypto_payment_is_income() {
         let input = |amount: f64, kind: Option<&str>| TxInput {
             date: "2026-01-01".into(),
@@ -925,5 +1021,7 @@ mod tests {
         assert_eq!(input(-20.0, Some("payment")).kind(), "payment");
         assert_eq!(input(20.0, Some("payment")).kind(), "deposit");
         assert_eq!(input(-20.0, None).kind(), "withdrawal");
+        assert_eq!(input(20.0, Some("income")).kind(), "income");
+        assert_eq!(input(-20.0, Some("income")).kind(), "withdrawal");
     }
 }

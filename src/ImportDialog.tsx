@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { api, fmtDate, fmtRate, ImportPreview, pickOpen, SOURCE_LABEL } from "./api";
+import { api, ApiExchange, fmtDate, fmtRate, ImportPreview, pickOpen, SOURCE_LABEL } from "./api";
 import { IconAlert, IconUpload } from "./Icons";
 
 interface Props {
@@ -13,24 +13,55 @@ const HOWTO: { name: string; steps: string }[] = [
   { name: "Revolut", steps: "Kripto → … → Statement (kivonat), CSV vagy Excel" },
   { name: "Kraken", steps: "History → Export → Ledgers, CSV" },
   { name: "Bybit", steps: "Orders → Spot Order → Trade History → Export; ill. Convert → History → Export" },
+  {
+    name: "Crypto.com",
+    steps: "App → Accounts → Transaction History → Export, „Crypto Wallet” (crypto_transactions_record CSV); a Visa kártya kriptós feltöltései innen jönnek",
+  },
   { name: "Bank", steps: "a bank netbankjából a számlakivonat CSV/Excel exportja (Revolut, Wise, magyar bankok); a tőzsdékre küldött és onnan érkező utalásokat veszi át" },
 ];
 
 const amountFmt = (n: number) => fmtRate(n);
+
+/** API-s lekérés tőzsdénként: hol hozható létre a kulcs, és milyen (csak olvasó) jog kell. */
+const API_HELP: Record<ApiExchange, { name: string; secret: string; help: string }> = {
+  kraken: {
+    name: "Kraken",
+    secret: "Titkos kulcs (Private key)",
+    help: "Settings → API: hozz létre kulcsot csak „Query Ledger Entries” joggal.",
+  },
+  binance: {
+    name: "Binance",
+    secret: "Titkos kulcs (Secret key)",
+    help: "Profil → API Management: rendszer által generált kulcs, csak „Enable Reading” joggal (kereskedés és kifizetés kikapcsolva).",
+  },
+  bybit: {
+    name: "Bybit",
+    secret: "Titkos kulcs (API secret)",
+    help: "Profil → API → Create New Key → System-generated: „Read-Only” jogosultság. A Bybit API csak kb. az utolsó 2 év ügyleteit adja; a régebbieket fájlexportból importáld.",
+  },
+};
 
 export function ImportDialog({ onClose, onImported, onExcel }: Props) {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [kraken, setKraken] = useState({ open: false, key: "", secret: "", since: "2022-01-01" });
+  const [remote, setRemote] = useState<{ open: boolean; exchange: ApiExchange; key: string; secret: string; since: string }>({
+    open: false,
+    exchange: "binance",
+    key: "",
+    secret: "",
+    since: "2022-01-01",
+  });
+  const help = API_HELP[remote.exchange];
 
-  async function fetchKraken() {
+  async function fetchApi() {
     setError(null);
     setBusy(true);
     try {
-      const p = await api.previewKrakenApi(kraken.key, kraken.secret, kraken.since);
-      setKraken({ open: false, key: "", secret: "", since: kraken.since });
+      const p = await api.previewApi(remote.exchange, remote.key, remote.secret, remote.since);
+      // A kulcsot nem tartjuk meg a lekérés után.
+      setRemote({ ...remote, open: false, key: "", secret: "" });
       setPreview(p);
       setSelected(new Set(p.rows.filter((r) => !r.duplicate).map((r) => r.key)));
     } catch (e) {
@@ -64,7 +95,7 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
     setError(null);
     try {
       const rows = preview.rows.filter((r) => selected.has(r.key));
-      const r = await api.commitImport(preview.source, rows);
+      const r = await api.commitImport(preview.source, rows, preview.origin);
       onImported(
         `${SOURCE_LABEL[preview.source] ?? preview.source}: ${r.imported} új tétel${r.skipped ? `, ${r.skipped} frissítve` : ""}.`,
       );
@@ -120,47 +151,61 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
             </button>
             {error && <p className="notice warn">{error}</p>}
             <div className="api-import">
-              {!kraken.open ? (
-                <button className="link" onClick={() => setKraken({ ...kraken, open: true })}>
-                  Kraken: lekérés közvetlenül, API kulccsal
+              {!remote.open ? (
+                <button className="link" onClick={() => setRemote({ ...remote, open: true })}>
+                  Lekérés közvetlenül, API kulccsal (Binance, Bybit, Kraken)
                 </button>
               ) : (
                 <form
                   className="api-form"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    fetchKraken();
+                    fetchApi();
                   }}
                 >
+                  <div className="kind-toggle three" role="radiogroup" aria-label="Tőzsde">
+                    {(Object.keys(API_HELP) as ApiExchange[]).map((x) => (
+                      <button
+                        key={x}
+                        type="button"
+                        role="radio"
+                        aria-checked={remote.exchange === x}
+                        className={remote.exchange === x ? "on in" : ""}
+                        onClick={() => setRemote({ ...remote, exchange: x, key: "", secret: "" })}
+                      >
+                        {API_HELP[x].name}
+                      </button>
+                    ))}
+                  </div>
                   <p className="muted small">
-                    A Krakenen (Settings → API) hozz létre kulcsot <strong>csak</strong> „Query Ledger Entries” joggal. A kulcsot
-                    és a titkot az app nem menti el, csak erre a lekérésre használja. Sok tételnél a lekérés percekig tarthat.
+                    {help.help} A kulcsnak <strong>csak olvasási</strong> joga legyen. Az app a kulcsot és a titkot nem menti el,
+                    csak erre a lekérésre használja. Sok tételnél a lekérés percekig tarthat.
                   </p>
                   <label className="field">
                     <span className="label">API kulcs</span>
-                    <input id="kraken-key" autoComplete="off" value={kraken.key} onChange={(e) => setKraken({ ...kraken, key: e.target.value })} />
+                    <input id="api-key" autoComplete="off" value={remote.key} onChange={(e) => setRemote({ ...remote, key: e.target.value })} />
                   </label>
                   <label className="field">
-                    <span className="label">Titkos kulcs (Private key)</span>
+                    <span className="label">{help.secret}</span>
                     <input
-                      id="kraken-secret"
+                      id="api-secret"
                       type="password"
                       autoComplete="off"
-                      value={kraken.secret}
-                      onChange={(e) => setKraken({ ...kraken, secret: e.target.value })}
+                      value={remote.secret}
+                      onChange={(e) => setRemote({ ...remote, secret: e.target.value })}
                     />
                   </label>
                   <label className="field">
                     <span className="label">Ettől a naptól</span>
-                    <input id="kraken-since" type="date" value={kraken.since} onChange={(e) => setKraken({ ...kraken, since: e.target.value })} />
+                    <input id="api-since" type="date" value={remote.since} onChange={(e) => setRemote({ ...remote, since: e.target.value })} />
                   </label>
                   <div className="form-actions">
-                    <button type="button" className="btn ghost" onClick={() => setKraken({ ...kraken, open: false, secret: "" })}>
+                    <button type="button" className="btn ghost" onClick={() => setRemote({ ...remote, open: false, key: "", secret: "" })}>
                       Mégse
                     </button>
                     <span className="spacer" />
-                    <button className="btn primary" type="submit" disabled={busy || !kraken.key || !kraken.secret}>
-                      {busy ? "Lekérés…" : "Lekérés"}
+                    <button className="btn primary" type="submit" disabled={busy || !remote.key || !remote.secret}>
+                      {busy ? "Lekérés…" : `Lekérés (${help.name})`}
                     </button>
                   </div>
                 </form>
@@ -191,6 +236,9 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
                 {preview.existing ? ` · ${preview.existing} már importálva (frissül)` : ""}
               </span>
             </div>
+            <p className="muted small origin" title="Az eredeti sorokat ezzel a forrással együtt menti (ügyletszintű nyomkövetés).">
+              Forrás: {preview.origin}
+            </p>
 
             {preview.rows.some((r) => r.duplicate) && (
               <div className="notice warn">
@@ -225,7 +273,7 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
                   <th>Év</th>
                   <th>Deviza</th>
                   <th className="num">Vétel (kiadás)</th>
-                  <th className="num">Eladás (bevétel)</th>
+                  <th className="num">Eladás, fizetés (bevétel)</th>
                   <th className="num">Ügylet</th>
                 </tr>
               </thead>
@@ -269,7 +317,9 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
                       </td>
                       <td>{fmtDate(r.date)}</td>
                       <td>
-                        <span className={`chip ${r.kind === "buy" ? "in" : "out"}`}>{r.kind === "buy" ? "Vétel" : "Eladás"}</span>
+                        <span className={`chip ${r.kind === "buy" ? "in" : "out"}`}>
+                          {r.kind === "buy" ? "Vétel" : r.kind === "payment" ? "Kártyás fizetés" : "Eladás"}
+                        </span>
                         {r.duplicate && (
                           <span className="chip dup" title={r.duplicate}>
                             lehet dupla
@@ -280,7 +330,9 @@ export function ImportDialog({ onClose, onImported, onExcel }: Props) {
                         {amountFmt(r.amount)} {r.currency}
                       </td>
                       <td className="num muted">{r.fee ? `${amountFmt(r.fee)} ${r.currency}` : "–"}</td>
-                      <td className="num muted">{r.count}</td>
+                      <td className="num muted" title={r.details.join("\n")}>
+                        {r.count}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -2,8 +2,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, Currency, FORM_CURRENCIES, fmtDate, fmtFt, fmtRate, fmtTax, formatAmountInput, parseAmount, RateInfo, today, Tx, YearSummary } from "./api";
 import { IconArrow } from "./Icons";
 
-/** in: befizetés, out: kivétel, pay: kriptóval fizetett áru/szolgáltatás (bevételnek számít). */
-type Kind = "in" | "out" | "pay";
+/**
+ * in: befizetés, out: kivétel, pay: kriptóval fizetett áru/szolgáltatás (bevételnek számít),
+ * inc: kriptóban kapott bér vagy ellenérték (a megszerzéskor adózott érték kiadásnak számít).
+ */
+type Kind = "in" | "out" | "pay" | "inc";
 const OTHER_CURRENCIES = FORM_CURRENCIES.filter(([code]) => code !== "EUR" && code !== "HUF");
 
 interface Props {
@@ -19,7 +22,7 @@ interface Props {
 
 export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete }: Props) {
   const [kind, setKind] = useState<Kind>(
-    editing?.kind === "payment" ? "pay" : editing && editing.amount < 0 ? "out" : "in",
+    editing?.kind === "payment" ? "pay" : editing?.kind === "income" ? "inc" : editing && editing.amount < 0 ? "out" : "in",
   );
   const [amountText, setAmountText] = useState(editing ? formatAmountInput(String(Math.abs(editing.amount))) : "");
   const [currency, setCurrency] = useState<Currency>(editing?.currency ?? "EUR");
@@ -36,7 +39,8 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
   const caretRef = useRef<number | null>(null);
 
   const abs = parseAmount(amountText);
-  const amount = abs === null ? null : kind === "in" ? Math.abs(abs) : -Math.abs(abs);
+  const positive = kind === "in" || kind === "inc";
+  const amount = abs === null ? null : positive ? Math.abs(abs) : -Math.abs(abs);
   const manual = manualRate.trim() ? parseAmount(manualRate) : null;
   const rate = currency === "HUF" ? 1 : editRate && manual ? manual : (mnb.info?.rate ?? null);
   const huf = amount !== null && rate !== null ? Math.round(amount * rate) : null;
@@ -83,7 +87,7 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
     let v = input.value;
     // A mínusz előjel kivételt jelent.
     if (/^\s*-/.test(v)) {
-      if (kind === "in") setKind("out");
+      if (positive) setKind("out");
       v = v.replace("-", "");
     }
     // A kurzor a formázás után is ugyanannyi számjegy után maradjon.
@@ -122,7 +126,7 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
         amount,
         rate: currency !== "HUF" && editRate ? manual : null,
         note,
-        kind: kind === "pay" ? ("payment" as const) : undefined,
+        kind: kind === "pay" ? ("payment" as const) : kind === "inc" ? ("income" as const) : undefined,
       };
       const saved = editing ? await api.updateTransaction(editing.id, input) : await api.addTransaction(input);
       onSaved(saved);
@@ -168,10 +172,23 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
           Fizetés
           <small>kriptóval</small>
         </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={kind === "inc"}
+          className={kind === "inc" ? "on in" : ""}
+          onClick={() => setKind("inc")}
+          title="Kriptóban kaptál bért, vállalkozói díjat vagy más ellenértéket"
+        >
+          Jövedelem
+          <small>kriptóban kapott</small>
+        </button>
       </div>
 
       <div className="amount-field">
-        <span className="label">{kind === "pay" ? "Az áru vagy szolgáltatás értéke" : "Összeg"}</span>
+        <span className="label">
+          {kind === "pay" ? "Az áru vagy szolgáltatás értéke" : kind === "inc" ? "A kapott kripto értéke a megszerzés napján" : "Összeg"}
+        </span>
         <div className="amount-box" onClick={() => amountRef.current?.focus()}>
           <input
             ref={amountRef}
@@ -300,12 +317,19 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
             <strong>{fmtTax(beforeTax)}</strong>
           )}
         </div>
-        {preview && kind !== "in" && delta === 0 && (
+        {preview && !positive && delta === 0 && (
           <p className="hint good">Ez {kind === "pay" ? "a fizetés" : "a kivétel"} még nem keletkeztet adót.</p>
         )}
         {kind === "pay" && (
           <p className="hint">
             Ha kriptóval fizetsz árut vagy szolgáltatást, annak forintértéke bevételnek számít, ugyanúgy, mint egy kivétel.
+          </p>
+        )}
+        {kind === "inc" && (
+          <p className="hint">
+            Kriptóban kapott bérnél vagy ellenértéknél a megszerzéskor más jogcímen (pl. munkabérként) adózott érték később
+            kiadásnak számít, így az eladáskor nem adózol rá még egyszer. Magát a bért vagy díjat a saját szabályai szerint
+            kell bevallani – ezt a program nem számolja.
           </p>
         )}
       </div>
@@ -329,8 +353,16 @@ export function EntryForm({ editing, years, onSaved, onError, onCancel, onDelete
             Mégse
           </button>
         )}
-        <button className={`btn primary ${kind === "in" ? "in" : "out"}`} type="submit" disabled={!valid || busy}>
-          {editing ? "Mentés" : kind === "in" ? "Befizetés rögzítése" : kind === "out" ? "Kivétel rögzítése" : "Fizetés rögzítése"}
+        <button className={`btn primary ${positive ? "in" : "out"}`} type="submit" disabled={!valid || busy}>
+          {editing
+            ? "Mentés"
+            : kind === "in"
+              ? "Befizetés rögzítése"
+              : kind === "out"
+                ? "Kivétel rögzítése"
+                : kind === "inc"
+                  ? "Jövedelem rögzítése"
+                  : "Fizetés rögzítése"}
         </button>
       </div>
     </form>

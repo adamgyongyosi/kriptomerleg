@@ -66,6 +66,18 @@ describe("rögzítő űrlap", () => {
     expect(add.args.input).toMatchObject({ amount: -25, kind: "payment" });
   });
 
+  it("a kriptóban kapott jövedelem pozitív, income típusú tételt küld", async () => {
+    render(<EntryForm years={[]} onSaved={() => {}} onError={() => {}} />);
+    fireEvent.click(screen.getByRole("radio", { name: /Jövedelem/ }));
+    expect(screen.getByText("A kapott kripto értéke a megszerzés napján")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Összeg"), { target: { value: "100" } });
+    await screen.findByText("400,00 Ft");
+    fireEvent.click(screen.getByRole("button", { name: "Jövedelem rögzítése" }));
+    await waitFor(() => expect(calls.some((c) => c.cmd === "add_transaction")).toBe(true));
+    const add = calls.find((c) => c.cmd === "add_transaction")!;
+    expect(add.args.input).toMatchObject({ amount: 100, kind: "income" });
+  });
+
   it("a „…” menüből választott devizára kéri le az árfolyamot", async () => {
     render(<EntryForm years={[]} onSaved={() => {}} onError={() => {}} />);
     fireEvent.change(screen.getByLabelText("Más deviza"), { target: { value: "USD" } });

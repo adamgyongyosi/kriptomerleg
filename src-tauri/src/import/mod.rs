@@ -1,4 +1,4 @@
-//! Tőzsdei és banki exportok beolvasása (Binance, Kraken, Revolut, Bybit, banki kivonat).
+//! Tőzsdei és banki exportok beolvasása (Binance, Kraken, Revolut, Bybit, Crypto.com, banki kivonat).
 //!
 //! Adózási szempontból csak a fiat ↔ kripto ügyletek számítanak: amikor fiatért kriptót veszel
 //! (kiadás) vagy kriptót fiatra adsz el (bevétel). A díjak a kiadást növelik / a bevételt
@@ -13,6 +13,9 @@ mod binance;
 mod bybit;
 mod kraken;
 mod kraken_api;
+mod binance_api;
+mod bybit_api;
+mod cryptocom;
 mod revolut;
 
 use calamine::{Data, Reader, open_workbook_auto};
@@ -26,7 +29,7 @@ const FIAT: &[&str] = &[
 ];
 
 /// Egy ügylet fiat-oldala. `amount` < 0: fiat ment ki (vétel, díj), > 0: fiat jött be (eladás).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct FiatFlow {
     pub date: NaiveDate,
     pub currency: String,
@@ -34,6 +37,10 @@ pub struct FiatFlow {
     pub amount: f64,
     /// Ebből a díj (tájékoztató, pozitív).
     pub fee: f64,
+    /// Az eredeti sor (pontosvesszővel összefűzve) – ügyletszintű nyomkövetéshez.
+    pub raw: String,
+    /// Kriptokártyás fizetés (pl. kártyafeltöltés kriptóból): bevétel, „Fizetés kriptóval” tételként.
+    pub payment: bool,
 }
 
 pub struct Parsed {
@@ -52,7 +59,8 @@ pub struct ImportRow {
     pub key: String,
     pub date: String,
     pub currency: String,
-    /// "buy" (fiat → kripto, kiadás) vagy "sell" (kripto → fiat, bevétel).
+    /// "buy" (fiat → kripto, kiadás), "sell" (kripto → fiat, bevétel) vagy "payment"
+    /// (kriptokártyás fizetés, bevétel).
     pub kind: String,
     /// A fiat összeg abszolút értéke, díjjal együtt.
     pub amount: f64,
@@ -62,6 +70,9 @@ pub struct ImportRow {
     /// Ha egy másik forrásból (pl. kézzel) már van hasonló tétel ugyanazon a napon, annak leírása.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duplicate: Option<String>,
+    /// Az összevont eredeti sorok (ügyletszintű nyomkövetés).
+    #[serde(default)]
+    pub details: Vec<String>,
 }
 
 pub fn parse_file(path: &str) -> Result<Parsed, String> {
@@ -74,6 +85,8 @@ pub fn parse_file(path: &str) -> Result<Parsed, String> {
         revolut::parse(&table)
     } else if bybit::detect(&table) {
         bybit::parse(&table)
+    } else if cryptocom::detect(&table) {
+        cryptocom::parse(&table)
     } else if bank::detect(&table) {
         // Utolsóként: a banki kivonat oszlopai általánosak, a tőzsdei formátumok elsőbbséget kapnak.
         bank::parse(&table)
@@ -93,8 +106,20 @@ pub fn fetch_kraken(key: &str, secret: &str, start: i64) -> Result<Parsed, Strin
     Ok(parsed)
 }
 
+/// Binance spot ügyletek, Convert és kártyás/banki vásárlás API-n (csak olvasó kulccsal).
+pub fn fetch_binance(key: &str, secret: &str, start_ms: i64) -> Result<Parsed, String> {
+    binance_api::fetch(key, secret, start_ms)
+}
+
+/// Bybit fiat ügyletek API-n (csak olvasó kulccsal).
+pub fn fetch_bybit(key: &str, secret: &str, start_ms: i64) -> Result<Parsed, String> {
+    bybit_api::fetch(key, secret, start_ms)
+}
+
 pub fn aggregate(source: &str, flows: &[FiatFlow]) -> Vec<ImportRow> {
-    let mut groups: BTreeMap<(NaiveDate, String, &'static str), (f64, f64, usize)> = BTreeMap::new();
+    // (nap, deviza, irány) → (összeg, díj, ügyletszám, eredeti sorok)
+    type Group = (f64, f64, usize, Vec<String>);
+    let mut groups: BTreeMap<(NaiveDate, String, &'static str), Group> = BTreeMap::new();
     // A külön sorban szereplő díj (pl. Binance "Transaction Fee") ahhoz az aznapi eladáshoz
     // tartozik, ha van ilyen; különben a vételt növeli.
     let is_fee_only = |f: &FiatFlow| f.fee > 0.0 && (f.amount + f.fee).abs() < 1e-9;
@@ -107,7 +132,9 @@ pub fn aggregate(source: &str, flows: &[FiatFlow]) -> Vec<ImportRow> {
         if f.amount == 0.0 {
             continue;
         }
-        let kind = if f.amount > 0.0 || (is_fee_only(f) && sell_days.contains(&(f.date, f.currency.as_str()))) {
+        let kind = if f.payment {
+            "payment"
+        } else if f.amount > 0.0 || (is_fee_only(f) && sell_days.contains(&(f.date, f.currency.as_str()))) {
             "sell"
         } else {
             "buy"
@@ -116,10 +143,13 @@ pub fn aggregate(source: &str, flows: &[FiatFlow]) -> Vec<ImportRow> {
         g.0 += f.amount;
         g.1 += f.fee;
         g.2 += 1;
+        if !f.raw.is_empty() {
+            g.3.push(f.raw.clone());
+        }
     }
     groups
         .into_iter()
-        .map(|((date, currency, kind), (amount, fee, count))| ImportRow {
+        .map(|((date, currency, kind), (amount, fee, count, details))| ImportRow {
             key: format!("{source}:{date}:{currency}:{kind}"),
             date: date.to_string(),
             currency,
@@ -128,6 +158,7 @@ pub fn aggregate(source: &str, flows: &[FiatFlow]) -> Vec<ImportRow> {
             fee: round2(fee),
             count,
             duplicate: None,
+            details,
         })
         .filter(|r| r.amount > 0.0)
         .collect()
@@ -135,6 +166,15 @@ pub fn aggregate(source: &str, flows: &[FiatFlow]) -> Vec<ImportRow> {
 
 fn round2(x: f64) -> f64 {
     (x * 100.0).round() / 100.0
+}
+
+/// A beolvasott fájl azonosítója a nyomkövetéshez: név és SHA-256 ujjlenyomat.
+pub fn file_origin(path: &str) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    let bytes = std::fs::read(path).map_err(|e| format!("Nem olvasható a fájl: {e}"))?;
+    let name = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let hash: String = Sha256::digest(&bytes).iter().map(|b| format!("{b:02x}")).collect();
+    Ok(format!("{name} · SHA-256 {hash}"))
 }
 
 /* ───────────── Táblázat beolvasása ───────────── */
@@ -402,9 +442,9 @@ mod tests {
     fn aggregates_per_day() {
         let d = NaiveDate::from_ymd_opt(2026, 3, 4).unwrap();
         let flows = vec![
-            FiatFlow { date: d, currency: "EUR".into(), amount: -100.0, fee: 0.1 },
-            FiatFlow { date: d, currency: "EUR".into(), amount: -50.0, fee: 0.05 },
-            FiatFlow { date: d, currency: "EUR".into(), amount: 30.0, fee: 0.0 },
+            FiatFlow { date: d, currency: "EUR".into(), amount: -100.0, fee: 0.1, ..Default::default() },
+            FiatFlow { date: d, currency: "EUR".into(), amount: -50.0, fee: 0.05, ..Default::default() },
+            FiatFlow { date: d, currency: "EUR".into(), amount: 30.0, fee: 0.0, ..Default::default() },
         ];
         let rows = aggregate("binance", &flows);
         assert_eq!(rows.len(), 2);
@@ -416,8 +456,8 @@ mod tests {
     fn separate_fee_goes_to_same_day_sale() {
         let d = NaiveDate::from_ymd_opt(2026, 6, 3).unwrap();
         let flows = vec![
-            FiatFlow { date: d, currency: "EUR".into(), amount: 196.8, fee: 0.0 },
-            FiatFlow { date: d, currency: "EUR".into(), amount: -0.2, fee: 0.2 },
+            FiatFlow { date: d, currency: "EUR".into(), amount: 196.8, fee: 0.0, ..Default::default() },
+            FiatFlow { date: d, currency: "EUR".into(), amount: -0.2, fee: 0.2, ..Default::default() },
         ];
         let rows = aggregate("binance", &flows);
         assert_eq!(rows.len(), 1);
@@ -436,6 +476,7 @@ mod tests {
             ("bybit-spot-trade-history.csv", "bybit", 3),
             ("bybit-convert-history.csv", "bybit", 2),
             ("bank-kivonat.csv", "bank", 3),
+            ("cryptocom-transactions.csv", "cryptocom", 4),
         ];
         for (file, source, expected) in cases {
             let p = parse_file(dir.join(file).to_str().unwrap()).unwrap_or_else(|e| panic!("{file}: {e}"));

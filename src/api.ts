@@ -36,9 +36,9 @@ export interface Tx {
   rateDate: string | null;
   huf: number;
   note: string;
-  /** "kézi", "excel", "binance", "kraken", "revolut", "bybit" */
+  /** "kézi", "excel", "binance", "kraken", "revolut", "bybit", "cryptocom", "bank" */
   source: string;
-  /** "deposit" | "withdrawal" | "payment" | "buy" | "sell" */
+  /** "deposit" | "withdrawal" | "payment" | "income" | "buy" | "sell" */
   kind: string;
   fee: number;
 }
@@ -47,12 +47,15 @@ export interface ImportRow {
   key: string;
   date: string;
   currency: string;
-  kind: "buy" | "sell";
+  /** "payment": kriptokártyás fizetés (pl. kártyafeltöltés kriptóból) – bevétel. */
+  kind: "buy" | "sell" | "payment";
   amount: number;
   fee: number;
   count: number;
   /** Másik forrásból már van hasonló tétel ugyanazon a napon. */
   duplicate?: string;
+  /** Az összevont eredeti sorok (ügyletszintű nyomkövetés). */
+  details: string[];
 }
 
 export interface ImportPreview {
@@ -63,6 +66,47 @@ export interface ImportPreview {
   ignored: number;
   warnings: string[];
   manualInYears: { year: number; count: number }[];
+  /** Fájlnév és SHA-256, vagy API és lekérési idő – a nyomkövetéshez mentjük. */
+  origin: string;
+}
+
+/** API-val lekérdezhető tőzsdék. */
+export type ApiExchange = "kraken" | "binance" | "bybit";
+
+/** Egy importált tétel mögötti eredeti sor. */
+export interface ImportDetail {
+  origin: string;
+  raw: string;
+}
+
+/** Hiányzó vagy gyanús tétel jelzése. */
+export interface Issue {
+  /** "warn": valószínűleg hibás az adó; "info": érdemes ellenőrizni. */
+  level: "warn" | "info";
+  year: number | null;
+  text: string;
+}
+
+export interface PlanScenario {
+  year: number;
+  taxDueYear: number;
+  /** Az alapévtől kezdve az összes év adója. */
+  taxTotal: number;
+}
+
+/** „Mi lenne, ha” tervező: egy kivétel adóhatása idén vagy jövőre. */
+export interface Plan {
+  baselineTotal: number;
+  now: PlanScenario;
+  next: PlanScenario;
+  small: {
+    dayLimit: number;
+    yearCap: number;
+    yearUsed: number;
+    todayIncome: boolean;
+    fits: boolean;
+    enabled: boolean;
+  } | null;
 }
 
 export interface TxInput {
@@ -72,8 +116,8 @@ export interface TxInput {
   /** null: MNB árfolyam a dátum napján. */
   rate: number | null;
   note: string;
-  /** "payment": kriptóval fizetett áru/szolgáltatás (bevétel). */
-  kind?: "payment";
+  /** "payment": kriptóval fizetett áru/szolgáltatás (bevétel); "income": kriptóban kapott bér/ellenérték (kiadás). */
+  kind?: "payment" | "income";
 }
 
 export interface RateInfo {
@@ -130,11 +174,14 @@ export const api = {
   importExcel: (path: string) => invoke<{ imported: number; skipped: number }>("import_excel", { path }),
   exportCsv: (path: string) => invoke<void>("export_csv", { path }),
   previewImport: (path: string) => invoke<ImportPreview>("preview_import", { path }),
-  /** Kraken főkönyv csak olvasó API kulccsal; `since`: ÉÉÉÉ-HH-NN. A kulcsot nem tároljuk. */
-  previewKrakenApi: (key: string, secret: string, since: string) =>
-    invoke<ImportPreview>("preview_kraken_api", { key, secret, since }),
-  commitImport: (source: string, rows: ImportRow[]) =>
-    invoke<{ imported: number; skipped: number }>("commit_import", { source, rows }),
+  /** Tőzsdei ügyletek csak olvasó API kulccsal; `since`: ÉÉÉÉ-HH-NN. A kulcsot nem tároljuk. */
+  previewApi: (exchange: ApiExchange, key: string, secret: string, since: string) =>
+    invoke<ImportPreview>("preview_api", { exchange, key, secret, since }),
+  commitImport: (source: string, rows: ImportRow[], origin: string) =>
+    invoke<{ imported: number; skipped: number }>("commit_import", { source, rows, origin }),
+  transactionDetails: (id: number) => invoke<ImportDetail[]>("transaction_details", { id }),
+  findIssues: () => invoke<Issue[]>("find_issues"),
+  planWithdrawal: (year: number, huf: number) => invoke<Plan>("plan_withdrawal", { year, huf }),
   deleteBySource: (source: string, year: number | null) => invoke<number>("delete_by_source", { source, year }),
   setLossDeclared: (year: number, declared: boolean) => invoke<void>("set_loss_declared", { year, declared }),
   declarationImpact: () => invoke<DeclarationImpact[]>("declaration_impact"),
@@ -208,6 +255,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   kraken: "Kraken",
   revolut: "Revolut",
   bybit: "Bybit",
+  cryptocom: "Crypto.com",
   bank: "Bank",
 };
 
@@ -219,6 +267,8 @@ export function kindLabel(t: { kind: string; amount: number }): string {
       return "Eladás";
     case "payment":
       return "Fizetés kriptóval";
+    case "income":
+      return "Kriptóban kapott jövedelem";
     default:
       return t.amount > 0 ? "Befizetés" : "Kivétel";
   }
