@@ -1,0 +1,486 @@
+{
+  "details": [
+    {
+      "id": 1,
+      "origin": "Binance export: binance-2026.csv · SHA-256 3f9a…c21e",
+      "raw": "41827365;2023-02-14 09:10:30;Spot;Transaction Spend;EUR;500.00;"
+    },
+    {
+      "id": 1,
+      "origin": "Binance export: binance-2026.csv · SHA-256 3f9a…c21e",
+      "raw": "41827365;2023-02-14 09:11:31;Spot;Transaction Spend;EUR;500.00;"
+    },
+    {
+      "id": 2,
+      "origin": "Revolut kivonat: revolut-crypto.xlsx · SHA-256 81d0…5b7a",
+      "raw": "2023-05-09 10:40:05;Exchange;BTC;EUR;500.00;Completed"
+    },
+    {
+      "id": 3,
+      "origin": "Binance export: binance-2026.csv · SHA-256 3f9a…c21e",
+      "raw": "41827365;2023-11-20 11:10:30;Spot;Transaction Revenue;EUR;-600.00;"
+    },
+    {
+      "id": 4,
+      "origin": "Kraken API · lekérve 2026-11-02 10:14 · 2024-01-01 óta",
+      "raw": "L4XQ2Z-7KD3F-030AQ;T5RB2K-0039C;2024-01-15 12:00:12;trade;;currency;ZEUR;800.0000;2.0800"
+    },
+    {
+      "id": 5,
+      "origin": "Kraken API · lekérve 2026-11-02 10:14 · 2024-01-01 óta",
+      "raw": "L4XQ2Z-7KD3F-040AQ;T5RB2K-0049C;2024-03-11 13:00:12;trade;;currency;ZEUR;-600.0000;1.5600"
+    },
+    {
+      "id": 6,
+      "origin": "Revolut kivonat: revolut-crypto.xlsx · SHA-256 81d0…5b7a",
+      "raw": "2024-06-05 14:40:05;Exchange;BTC;EUR;300.00;Completed"
+    },
+    {
+      "id": 7,
+      "origin": "Binance export: binance-2026.csv · SHA-256 3f9a…c21e",
+      "raw": "41827365;2025-02-03 15:10:30;Spot;Transaction Spend;EUR;400.00;"
+    },
+    {
+      "id": 7,
+      "origin": "Binance export: binance-2026.csv · SHA-256 3f9a…c21e",
+      "raw": "41827365;2025-02-03 15:11:31;Spot;Transaction Spend;EUR;400.00;"
+    },
+    {
+      "id": 7,
+      "origin": "Binance export: binance-2026.csv · SHA-256 3f9a…c21e",
+      "raw": "41827365;2025-02-03 15:12:32;Spot;Transaction Spend;EUR;400.00;"
+    },
+    {
+      "id": 8,
+      "origin": "Bybit export: bybit-convert.csv · SHA-256 c44e…09f2",
+      "raw": "2025-04-22 16:20:44;BTCEUR;Sell;Filled;-900.00;EUR"
+    },
+    {
+      "id": 8,
+      "origin": "Bybit export: bybit-convert.csv · SHA-256 c44e…09f2",
+      "raw": "2025-04-22 16:21:44;BTCEUR;Sell;Filled;-900.00;EUR"
+    },
+    {
+      "id": 10,
+      "origin": "Crypto.com export: crypto_transactions_record.csv · SHA-256 aa12…e771",
+      "raw": "2025-10-07T10:30:00Z;Card Top-Up;BTC;EUR;-400.00;card_top_up"
+    },
+    {
+      "id": 11,
+      "origin": "Binance export: binance-2026.csv · SHA-256 3f9a…c21e",
+      "raw": "41827365;2026-01-12 11:10:30;Spot;Transaction Spend;EUR;500.00;"
+    },
+    {
+      "id": 11,
+      "origin": "Binance export: binance-2026.csv · SHA-256 3f9a…c21e",
+      "raw": "41827365;2026-01-12 11:11:31;Spot;Transaction Spend;EUR;500.00;"
+    },
+    {
+      "id": 12,
+      "origin": "Kraken API · lekérve 2026-11-02 10:14 · 2024-01-01 óta",
+      "raw": "L4XQ2Z-7KD3F-110AQ;T5RB2K-0119C;2026-03-04 12:00:12;trade;;currency;ZEUR;400.0000;1.0400"
+    },
+    {
+      "id": 13,
+      "origin": "Binance export: binance-2026.csv · SHA-256 3f9a…c21e",
+      "raw": "41827365;2026-05-19 13:10:30;Spot;Transaction Revenue;EUR;-1250.00;"
+    },
+    {
+      "id": 13,
+      "origin": "Binance export: binance-2026.csv · SHA-256 3f9a…c21e",
+      "raw": "41827365;2026-05-19 13:11:31;Spot;Transaction Revenue;EUR;-1250.00;"
+    },
+    {
+      "id": 15,
+      "origin": "Crypto.com export: crypto_transactions_record.csv · SHA-256 aa12…e771",
+      "raw": "2026-07-08T15:30:00Z;Card Top-Up;BTC;EUR;-150.00;card_top_up"
+    },
+    {
+      "id": 16,
+      "origin": "Revolut kivonat: revolut-crypto.xlsx · SHA-256 81d0…5b7a",
+      "raw": "2026-09-15 16:40:05;Exchange;BTC;EUR;600.00;Completed"
+    }
+  ],
+  "issues": [
+    {
+      "level": "info",
+      "text": "Binance: 2023-02-14 és 2023-11-20 között nincs tétel. Ha ebben az időszakban is volt fiat ↔ kripto ügyleted, hiányozhat egy exportrész.",
+      "year": 2023
+    },
+    {
+      "level": "info",
+      "text": "Binance: 2023-11-20 és 2025-02-03 között nincs tétel. Ha ebben az időszakban is volt fiat ↔ kripto ügyleted, hiányozhat egy exportrész.",
+      "year": 2023
+    },
+    {
+      "level": "info",
+      "text": "Binance: 2025-02-03 és 2026-01-12 között nincs tétel. Ha ebben az időszakban is volt fiat ↔ kripto ügyleted, hiányozhat egy exportrész.",
+      "year": 2025
+    },
+    {
+      "level": "info",
+      "text": "Binance: az utolsó importált tétel 2026-05-19. Ha azóta is volt ügyleted, importáld újra (a meglévő napok frissülnek, nem duplázódnak).",
+      "year": 2026
+    },
+    {
+      "level": "info",
+      "text": "Bybit: az utolsó importált tétel 2025-04-22. Ha azóta is volt ügyleted, importáld újra (a meglévő napok frissülnek, nem duplázódnak).",
+      "year": 2025
+    },
+    {
+      "level": "info",
+      "text": "Crypto.com: 2025-10-07 és 2026-07-08 között nincs tétel. Ha ebben az időszakban is volt fiat ↔ kripto ügyleted, hiányozhat egy exportrész.",
+      "year": 2025
+    },
+    {
+      "level": "info",
+      "text": "Crypto.com: az utolsó importált tétel 2026-07-08. Ha azóta is volt ügyleted, importáld újra (a meglévő napok frissülnek, nem duplázódnak).",
+      "year": 2026
+    },
+    {
+      "level": "info",
+      "text": "Kraken: 2024-03-11 és 2026-03-04 között nincs tétel. Ha ebben az időszakban is volt fiat ↔ kripto ügyleted, hiányozhat egy exportrész.",
+      "year": 2024
+    },
+    {
+      "level": "info",
+      "text": "Kraken: az utolsó importált tétel 2026-03-04. Ha azóta is volt ügyleted, importáld újra (a meglévő napok frissülnek, nem duplázódnak).",
+      "year": 2026
+    },
+    {
+      "level": "info",
+      "text": "Revolut: 2023-05-09 és 2024-06-05 között nincs tétel. Ha ebben az időszakban is volt fiat ↔ kripto ügyleted, hiányozhat egy exportrész.",
+      "year": 2023
+    },
+    {
+      "level": "info",
+      "text": "Revolut: 2024-06-05 és 2026-09-15 között nincs tétel. Ha ebben az időszakban is volt fiat ↔ kripto ügyleted, hiányozhat egy exportrész.",
+      "year": 2024
+    }
+  ],
+  "plan": {
+    "baselineTotal": 0,
+    "next": {
+      "taxDueYear": 60495,
+      "taxTotal": 60495,
+      "year": 2027
+    },
+    "now": {
+      "taxDueYear": 60494,
+      "taxTotal": 60494,
+      "year": 2026
+    },
+    "small": {
+      "dayLimit": 32280,
+      "enabled": false,
+      "fits": false,
+      "todayIncome": false,
+      "yearCap": 322800,
+      "yearUsed": 0
+    }
+  },
+  "summary": [
+    {
+      "carriedInHuf": 0,
+      "depositsHuf": 572570,
+      "lossCredit": 51574,
+      "lossCreditRemaining": 0,
+      "lossDeclared": true,
+      "lossPool": 51574,
+      "offsetCap": 0,
+      "offsetUsed": 0,
+      "preRegime": false,
+      "resultHuf": -343826,
+      "smallExemptAvailable": 0,
+      "smallExemptHuf": 0,
+      "taxDue": 0,
+      "taxFreeHeadroom": 343829,
+      "taxGross": 0,
+      "withdrawalsHuf": 228744,
+      "year": 2023
+    },
+    {
+      "carriedInHuf": 0,
+      "depositsHuf": 419980,
+      "lossCredit": 27590,
+      "lossCreditRemaining": 22069,
+      "lossDeclared": true,
+      "lossPool": 79164,
+      "offsetCap": 0,
+      "offsetUsed": 0,
+      "preRegime": false,
+      "resultHuf": -183934,
+      "smallExemptAvailable": 0,
+      "smallExemptHuf": 0,
+      "taxDue": 0,
+      "taxFreeHeadroom": 527763,
+      "taxGross": 0,
+      "withdrawalsHuf": 236046,
+      "year": 2024
+    },
+    {
+      "carriedInHuf": 0,
+      "depositsHuf": 643140,
+      "lossCredit": 0,
+      "lossCreditRemaining": 0,
+      "lossDeclared": false,
+      "lossPool": 79164,
+      "offsetCap": 36086,
+      "offsetUsed": 36086,
+      "preRegime": false,
+      "resultHuf": 240574,
+      "smallExemptAvailable": 0,
+      "smallExemptHuf": 0,
+      "taxDue": 0,
+      "taxFreeHeadroom": 287189,
+      "taxGross": 36086,
+      "withdrawalsHuf": 883714,
+      "year": 2025
+    },
+    {
+      "carriedInHuf": 0,
+      "depositsHuf": 878567,
+      "lossCredit": 0,
+      "lossCreditRemaining": 0,
+      "lossDeclared": true,
+      "lossPool": 43078,
+      "offsetCap": 21009,
+      "offsetUsed": 21009,
+      "preRegime": false,
+      "resultHuf": 140058,
+      "smallExemptAvailable": 0,
+      "smallExemptHuf": 0,
+      "taxDue": 0,
+      "taxFreeHeadroom": 147131,
+      "taxGross": 21009,
+      "withdrawalsHuf": 1018625,
+      "year": 2026
+    }
+  ],
+  "transactions": [
+    {
+      "amount": 600.0,
+      "currency": "EUR",
+      "date": "2026-09-15",
+      "fee": 9.0,
+      "huf": 232572,
+      "id": 16,
+      "kind": "buy",
+      "note": "Revolut · 1 vétel",
+      "rate": 387.62,
+      "rateDate": "2026-09-15",
+      "rateSource": "MNB",
+      "source": "revolut"
+    },
+    {
+      "amount": -150.0,
+      "currency": "EUR",
+      "date": "2026-07-08",
+      "fee": 0.0,
+      "huf": -57350,
+      "id": 15,
+      "kind": "payment",
+      "note": "Crypto.com · 1 kártyás fizetés",
+      "rate": 382.33,
+      "rateDate": "2026-07-08",
+      "rateSource": "MNB",
+      "source": "cryptocom"
+    },
+    {
+      "amount": 250.0,
+      "currency": "EUR",
+      "date": "2026-06-30",
+      "fee": 0.0,
+      "huf": 95775,
+      "id": 14,
+      "kind": "income",
+      "note": "Grafikai munka díja USDC-ben",
+      "rate": 383.1,
+      "rateDate": "2026-06-30",
+      "rateSource": "MNB",
+      "source": "kézi"
+    },
+    {
+      "amount": -2500.0,
+      "currency": "EUR",
+      "date": "2026-05-19",
+      "fee": 2.5,
+      "huf": -961275,
+      "id": 13,
+      "kind": "sell",
+      "note": "Binance · 2 eladás",
+      "rate": 384.51,
+      "rateDate": "2026-05-19",
+      "rateSource": "MNB",
+      "source": "binance"
+    },
+    {
+      "amount": 400.0,
+      "currency": "EUR",
+      "date": "2026-03-04",
+      "fee": 1.04,
+      "huf": 156020,
+      "id": 12,
+      "kind": "buy",
+      "note": "Kraken · 1 vétel",
+      "rate": 390.05,
+      "rateDate": "2026-03-04",
+      "rateSource": "MNB",
+      "source": "kraken"
+    },
+    {
+      "amount": 1000.0,
+      "currency": "EUR",
+      "date": "2026-01-12",
+      "fee": 1.0,
+      "huf": 394200,
+      "id": 11,
+      "kind": "buy",
+      "note": "Binance · 2 vétel",
+      "rate": 394.2,
+      "rateDate": "2026-01-12",
+      "rateSource": "MNB",
+      "source": "binance"
+    },
+    {
+      "amount": -400.0,
+      "currency": "EUR",
+      "date": "2025-10-07",
+      "fee": 0.0,
+      "huf": -155920,
+      "id": 10,
+      "kind": "payment",
+      "note": "Crypto.com · 1 kártyás fizetés",
+      "rate": 389.8,
+      "rateDate": "2025-10-07",
+      "rateSource": "MNB",
+      "source": "cryptocom"
+    },
+    {
+      "amount": 150000.0,
+      "currency": "HUF",
+      "date": "2025-08-18",
+      "fee": 0.0,
+      "huf": 150000,
+      "id": 9,
+      "kind": "deposit",
+      "note": "Revolut feltöltés",
+      "rate": 1.0,
+      "rateDate": "2025-08-18",
+      "rateSource": "-",
+      "source": "kézi"
+    },
+    {
+      "amount": -1800.0,
+      "currency": "EUR",
+      "date": "2025-04-22",
+      "fee": 1.8,
+      "huf": -727794,
+      "id": 8,
+      "kind": "sell",
+      "note": "Bybit · 2 eladás",
+      "rate": 404.33,
+      "rateDate": "2025-04-22",
+      "rateSource": "MNB",
+      "source": "bybit"
+    },
+    {
+      "amount": 1200.0,
+      "currency": "EUR",
+      "date": "2025-02-03",
+      "fee": 1.2,
+      "huf": 493140,
+      "id": 7,
+      "kind": "buy",
+      "note": "Binance · 3 vétel",
+      "rate": 410.95,
+      "rateDate": "2025-02-03",
+      "rateSource": "MNB",
+      "source": "binance"
+    },
+    {
+      "amount": 300.0,
+      "currency": "EUR",
+      "date": "2024-06-05",
+      "fee": 4.5,
+      "huf": 115476,
+      "id": 6,
+      "kind": "buy",
+      "note": "Revolut · 1 vétel",
+      "rate": 384.92,
+      "rateDate": "2024-06-05",
+      "rateSource": "MNB",
+      "source": "revolut"
+    },
+    {
+      "amount": -600.0,
+      "currency": "EUR",
+      "date": "2024-03-11",
+      "fee": 1.56,
+      "huf": -236046,
+      "id": 5,
+      "kind": "sell",
+      "note": "Kraken · 1 eladás",
+      "rate": 393.41,
+      "rateDate": "2024-03-11",
+      "rateSource": "MNB",
+      "source": "kraken"
+    },
+    {
+      "amount": 800.0,
+      "currency": "EUR",
+      "date": "2024-01-15",
+      "fee": 2.08,
+      "huf": 304504,
+      "id": 4,
+      "kind": "buy",
+      "note": "Kraken · 1 vétel",
+      "rate": 380.63,
+      "rateDate": "2024-01-15",
+      "rateSource": "MNB",
+      "source": "kraken"
+    },
+    {
+      "amount": -600.0,
+      "currency": "EUR",
+      "date": "2023-11-20",
+      "fee": 0.6,
+      "huf": -228744,
+      "id": 3,
+      "kind": "sell",
+      "note": "Binance · 1 eladás",
+      "rate": 381.24,
+      "rateDate": "2023-11-20",
+      "rateSource": "MNB",
+      "source": "binance"
+    },
+    {
+      "amount": 500.0,
+      "currency": "EUR",
+      "date": "2023-05-09",
+      "fee": 7.5,
+      "huf": 186050,
+      "id": 2,
+      "kind": "buy",
+      "note": "Revolut · 1 vétel",
+      "rate": 372.1,
+      "rateDate": "2023-05-09",
+      "rateSource": "MNB",
+      "source": "revolut"
+    },
+    {
+      "amount": 1000.0,
+      "currency": "EUR",
+      "date": "2023-02-14",
+      "fee": 1.0,
+      "huf": 386520,
+      "id": 1,
+      "kind": "buy",
+      "note": "Binance · 2 vétel",
+      "rate": 386.52,
+      "rateDate": "2023-02-14",
+      "rateSource": "MNB",
+      "source": "binance"
+    }
+  ]
+}

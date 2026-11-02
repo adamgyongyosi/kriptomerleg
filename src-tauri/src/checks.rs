@@ -29,7 +29,7 @@ pub fn find_issues(state: State<'_, AppState>) -> Result<Vec<Issue>, String> {
 }
 
 fn source_name(s: &str) -> String {
-    crate::capitalize(s)
+    crate::source_label(s)
 }
 
 fn year_of(date: &str) -> Option<i32> {

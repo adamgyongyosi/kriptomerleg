@@ -49,7 +49,7 @@ Nincs linter-konfiguráció.
 
 ## Weboldal (`site/`)
 
-Statikus `index.html` (GitHub Pages, `.github/workflows/pages.yml`). Új app-funkciónál frissíteni kell a funkciókártyákat, a `#minden-funkcio` listát, a JSON-LD `featureList`-et és a `site/llms.txt`-t. A JSON-LD `FAQPage` szövegének szó szerint egyeznie kell a látható GYIK-kel. A megosztási kép (`site/og-image.png`) forrása a `brand/og-card.html`; az újragenerálás parancsa a fájl elején van.
+Statikus `index.html` (GitHub Pages, `.github/workflows/pages.yml`). Új app-funkciónál frissíteni kell a funkciókártyákat, a `#minden-funkcio` listát, a JSON-LD `featureList`-et és a `site/llms.txt`-t. A JSON-LD `FAQPage` szövegének szó szerint egyeznie kell a látható GYIK-kel. A megosztási kép (`site/og-image.png`) forrása a `brand/og-card.html`; az újragenerálás parancsa a fájl elején van. A képernyőképek (`site/screens/`) a valódi felületről készülnek bemutató adatokkal: `dump_demo` teszt → `brand/app-screens.json`, `brand/app-screens.html` (mockolt IPC), `node brand/app-screens.mjs` (lépések a README „Weboldal” szakaszában). Ha egy látható felületrész változik, a képeket is generáld újra.
 
 ## Konvenciók
 

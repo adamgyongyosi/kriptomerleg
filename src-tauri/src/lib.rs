@@ -6,6 +6,8 @@ mod import;
 mod mnb;
 mod pdf;
 mod tax;
+#[cfg(test)]
+mod demo_dump;
 
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use rusqlite::{Connection, OptionalExtension, params};
@@ -641,7 +643,7 @@ fn find_duplicate(conn: &Connection, source: &str, r: &import::ImportRow) -> Res
     )
     .and_then(|mut s| s.query_row(params![r.date, r.currency, source, sign, r.amount], |x| Ok((x.get::<_, String>(0)?, x.get::<_, f64>(1)?))))
     .optional()
-    .map(|o| o.map(|(src, amount)| format!("{} tétel ugyanezen a napon: {} {}", capitalize(&src), hu_num(amount.abs(), 2), r.currency)))
+    .map(|o| o.map(|(src, amount)| format!("{} tétel ugyanezen a napon: {} {}", source_label(&src), hu_num(amount.abs(), 2), r.currency)))
     .map_err(err)
 }
 
@@ -699,7 +701,7 @@ async fn commit_import(
             "payment" => "kártyás fizetés",
             _ => "eladás",
         };
-        let mut note = format!("{} · {} {label}", capitalize(&source), r.count);
+        let mut note = format!("{} · {} {label}", source_label(&source), r.count);
         if r.fee > 0.0 {
             note.push_str(&format!(" · díj {} {}", hu_num(r.fee, 2), r.currency));
         }
@@ -726,6 +728,14 @@ const UPSERT_IMPORTED: &str = "INSERT INTO transactions
         date = excluded.date, currency = excluded.currency, amount = excluded.amount, rate = excluded.rate,
         rate_source = excluded.rate_source, rate_date = excluded.rate_date, huf = excluded.huf,
         note = excluded.note, kind = excluded.kind, fee = excluded.fee, trades = excluded.trades";
+
+/// A forrás megjelenített neve (pl. "cryptocom" → "Crypto.com").
+fn source_label(s: &str) -> String {
+    match s {
+        "cryptocom" => "Crypto.com".into(),
+        _ => capitalize(s),
+    }
+}
 
 fn capitalize(s: &str) -> String {
     let mut c = s.chars();

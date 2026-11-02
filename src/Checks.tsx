@@ -142,8 +142,9 @@ export function Planner(props: { year: number; eurRate: number | null; txs: Tx[]
   const next = plan ? plan.next.taxTotal - plan.baselineTotal : 0;
   let verdict = "";
   if (plan) {
-    if (now < next) verdict = `Idén kedvezőbb: ${fmtFt(next - now)}-tal kevesebb adó összesen.`;
-    else if (next < now) verdict = `Jövőre kedvezőbb: ${fmtFt(now - next)}-tal kevesebb adó összesen.`;
+    // 100 Ft alatti eltérés csak kerekítés (évenként egészre kerekített adó): ugyanannyinak vesszük.
+    if (next - now >= 100) verdict = `Idén kedvezőbb: ${fmtFt(next - now)}-tal kevesebb adó összesen.`;
+    else if (now - next >= 100) verdict = `Jövőre kedvezőbb: ${fmtFt(now - next)}-tal kevesebb adó összesen.`;
     else verdict = `Az adó összege ugyanannyi; jövőre kivéve egy évvel később, ${props.year + 2}. május 20-ig kell befizetni.`;
   }
   const s = plan?.small;
@@ -173,11 +174,11 @@ export function Planner(props: { year: number; eurRate: number | null; txs: Tx[]
       {error && <p className="notice warn">{error}</p>}
       {plan && (
         <div className="planner-result">
-          <div className={`plan-row ${now <= next ? "best" : ""}`}>
+          <div className={`plan-row ${next - now >= 100 ? "best" : ""}`}>
             <span>Idén ({props.year})</span>
             <strong>{now > 0 ? `+${fmtFt(now)}` : now < 0 ? `−${fmtFt(-now)}` : "nincs adó"}</strong>
           </div>
-          <div className={`plan-row ${next < now ? "best" : ""}`}>
+          <div className={`plan-row ${now - next >= 100 ? "best" : ""}`}>
             <span>Jövőre ({props.year + 1})</span>
             <strong>{next > 0 ? `+${fmtFt(next)}` : next < 0 ? `−${fmtFt(-next)}` : "nincs adó"}</strong>
           </div>

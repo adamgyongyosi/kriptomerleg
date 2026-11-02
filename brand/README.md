@@ -6,6 +6,8 @@ A „mérleg” egyszerre jelent egyenleget és igazságos mérlegelést; a mér
 
 | Fájl | Mire |
 |---|---|
+| `og-card.html` | A weboldal megosztási képének (`site/og-image.png`) forrása |
+| `app-screens.html`, `app-screens.ts`, `app-screens.json`, `app-screens.mjs` | A weboldal képernyőképei (`site/screens/`): a valódi felület bemutató adatokkal, és a rögzítő szkript (lásd a fő README „Weboldal” szakaszát) |
 | `logo-mark.svg` | Logójel (512×512, lekerekített négyzet). Ebből készülnek az app ikonjai: `npx tauri icon brand/logo-mark.svg -o src-tauri/icons` |
 
 **Színek**

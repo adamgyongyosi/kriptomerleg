@@ -11,7 +11,7 @@ Weboldal: <https://adamgyongyosi.github.io/kriptomerleg/> (a `site/` mappából,
 - Éves eredmény = kivételek − befizetések; nyereség után 15% SZJA.
 - **Fizetés kriptóval:** ha kriptóval fizetsz árut vagy szolgáltatást (ajándékkártya, utazás), annak forintértéke bevételnek számít, mint egy kivétel. Külön tételtípus („Fizetés kriptóval”), a CSV-exportban is.
 - **Kriptóban kapott jövedelem:** ha bért, vállalkozói díjat vagy más ellenértéket kriptóban kapsz, a megszerzéskor más jogcímen már adózott érték kiadásnak számít (mint egy befizetés), így a későbbi eladáskor nem adózol rá még egyszer. Külön tételtípus („Kriptóban kapott jövedelem”); magát a bért vagy díjat a saját szabályai szerint kell bevallani, azt az app nem számolja.
-- **Adótervező („mi lenne, ha”):** az Áttekintésen megadhatsz egy tervezett kivételt (€ vagy Ft), és látod, mennyi adóval jár, ha idén vagy ha jövőre veszed ki, melyik a kedvezőbb, és belefér-e a kisértékű ügylet keretébe (ügyletenkénti és éves határ, idén eddig felhasznált összeg, volt-e már ma bevételt hozó ügylet).
+- **Adótervező („mi lenne, ha”):** az Áttekintésen megadhatsz egy tervezett kivételt (€ vagy Ft), és látod, mennyi adóval jár, ha idén vagy ha jövőre veszed ki, melyik a kedvezőbb (100 Ft alatti, csak kerekítésből adódó eltérésnél „ugyanannyi”), és belefér-e a kisértékű ügylet keretébe (ügyletenkénti és éves határ, idén eddig felhasznált összeg, volt-e már ma bevételt hozó ügylet).
 - **Hiányzó tételek felderítése:** a *Tételek* oldal tetején az Ellenőrzés jelzi, ha bevételt hozó tétel előtt nincs rögzített befizetés vagy vétel, ha ugyanarra az évre banki kivonat és tőzsdei import is van, ha két forrásból közel azonos tétel szerepel ugyanarra a napra, ha egy tőzsdei forrásban fél évnél hosszabb hézag van, illetve ha az utolsó import régi.
 - **Adómentesen még kivehető:** az Áttekintésen látszik, mekkora kivételig (vagy kriptós fizetésig) nem keletkezik adó az évben, a folyó évben euróban is, a mai MNB árfolyamon.
 - Adókiegyenlítés: a veszteség 15%-a levonható, legfeljebb a tárgyévi és az előző két évi kriptoadó erejéig; a 2025-ös bevallástól a veszteség nem évül el (2025. évi LXXXIII. tv.). Korábbi év vesztesége csak akkor, ha azt annak az évnek a bevallásában feltüntették – ezt évenként jelölni kell (lásd [Az adószámítás szabályai](#az-adószámítás-szabályai)).
@@ -286,8 +286,13 @@ A landing oldal a `site/` mappában van: egyetlen statikus `index.html` (külső
 - Közzététel: a `.github/workflows/pages.yml` minden `site/` változásnál feltölti a GitHub Pages-re.
 - **Egyszeri beállítás:** Settings → Pages → Source: *GitHub Actions*. Ingyenes GitHub-fiókkal a Pages (és a mindenki által letölthető release) csak **publikus** repóból működik.
 - A repó neve egy helyen szerepel a lap alján lévő szkriptben (`REPO`), átnevezésnél csak ezt kell módosítani.
-- A funkciókártyák (9 db), a „Minden funkció részletesen” lista (`#minden-funkcio`, 6 csoport: rögzítés, adószámítás, bevallás, import, export és mentés, az app), az adatvédelmi sáv, az összevetés és a GYIK az app funkcióit követi; új funkciónál ezeket, a JSON-LD `featureList`-et és a `site/llms.txt`-t is frissítsd.
-- A főoldali app-mockup kipróbálható: a típus (befizetés, kivétel, fizetés kriptóval) és a deviza (€, $, £, Ft) váltható, példa árfolyamokkal.
+- Felépítés: hero valódi képernyőképpel → támogatott források → adatvédelmi sáv → **Bemutató** (öt kép–szöveg blokk: import, ellenőrzés, adótervező, évek és adó, bevallási segéd, plusz három további kép) → funkciókártyák → lépések → összevetés → letöltés → GYIK → záró felhívás. Mobilon a menü vízszintesen görgethető sor a fejléc alatt.
+- A funkciókártyák (9 db), a „Minden funkció részletesen” lenyíló lista (`#minden-funkcio`, 6 csoport: rögzítés, adószámítás, bevallás, import, export és mentés, az app), az adatvédelmi sáv, az összevetés és a GYIK az app funkcióit követi; új funkciónál ezeket, a JSON-LD `featureList`-et és a `site/llms.txt`-t is frissítsd.
+- **Képernyőképek** (`site/screens/`): a valódi felület, bemutató adatokkal; nézetenként sötét és világos téma (a látogató beállítása szerint jelenik meg, `<picture>` + `prefers-color-scheme`), 1× és 2× felbontású WebP (`srcset`), lustán töltve. Kattintásra (vagy Enterre) nagyítóban nyílnak meg, nyilakkal lapozhatók, Esc zárja.
+- A képek újragenerálása, ha a felület változik:
+  1. `cargo test --manifest-path src-tauri/Cargo.toml dump_demo -- --ignored` – a bemutató tételekből a valódi adószámítással elkészíti a `brand/app-screens.json`-t (`src-tauri/src/demo_dump.rs`);
+  2. `npm run dev`, majd a <http://localhost:1420/brand/app-screens.html> oldal a valódi appot mutatja ezekkel az adatokkal (a `brand/app-screens.ts` a Tauri hívásokat a JSON-ből válaszolja meg);
+  3. `npm i --no-save puppeteer-core && node brand/app-screens.mjs` – végigkattintja a nézeteket a Windowsra telepített Edge-dzsel, és a `site/screens/` mappába menti a képeket (egy nézet: `node brand/app-screens.mjs tervezo`).
 
 ### Keresőoptimalizálás (SEO, GEO, AEO)
 
@@ -316,6 +321,6 @@ Arculat (logó, színek, hangnem): [`brand/README.md`](brand/README.md).
 - `src-tauri/src/pdf.rs` – éves nyilvántartás PDF-ben
 - `src/` – React felület: `App.tsx` (oldalak), `EntryForm.tsx`, `Filing.tsx` (bevallási segéd), `DataPage.tsx` (adatok és mentés), `ImportDialog.tsx`, `Checks.tsx` (ellenőrzés, eredeti sorok, adótervező), `Dialogs.tsx` (appon belüli párbeszédablakok), `updates.ts` (frissítő); tesztek: `*.test.ts(x)`
 - `packaging/` – AUR és Flatpak csomagleírás
-- `site/` – landing oldal (`index.html`, `og-image.png`, `sitemap.xml`, `llms.txt`); `brand/og-card.html` – a megosztási kép forrása
+- `site/` – landing oldal (`index.html`, `screens/` képernyőképek, `og-image.png`, `sitemap.xml`, `llms.txt`); `brand/og-card.html` – a megosztási kép forrása; `brand/app-screens.*` – a képernyőképek bemutató felülete és rögzítő szkriptje
 - `brand/` – logó és arculati leírás
 - `CLAUDE.md` – tömör fejlesztői útmutató AI kódolóasszisztensnek (Claude Code): parancsok, architektúra, konvenciók; nagyobb szerkezeti változásnál ezt is igazítsd

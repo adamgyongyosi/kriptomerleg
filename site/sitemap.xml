@@ -1,7 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://adamgyongyosi.github.io/kriptomerleg/</loc>
-    <lastmod>2026-10-31</lastmod>
+    <lastmod>2026-11-02</lastmod>
+    <image:image>
+      <image:loc>https://adamgyongyosi.github.io/kriptomerleg/screens/attekintes-light.webp</image:loc>
+      <image:title>Kriptomérleg – Áttekintés: fizetendő adó és adómentesen kivehető összeg</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://adamgyongyosi.github.io/kriptomerleg/screens/api-light.webp</image:loc>
+      <image:title>Kriptomérleg – Importálás tőzsdéről API-kulccsal</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://adamgyongyosi.github.io/kriptomerleg/screens/tetelek-light.webp</image:loc>
+      <image:title>Kriptomérleg – Tételek ellenőrzéssel</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://adamgyongyosi.github.io/kriptomerleg/screens/tervezo-light.webp</image:loc>
+      <image:title>Kriptomérleg – Adótervező: kivétel idén vagy jövőre</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://adamgyongyosi.github.io/kriptomerleg/screens/evek-light.webp</image:loc>
+      <image:title>Kriptomérleg – Évek és adó</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://adamgyongyosi.github.io/kriptomerleg/screens/bevallas-light.webp</image:loc>
+      <image:title>Kriptomérleg – Bevallási segéd</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://adamgyongyosi.github.io/kriptomerleg/screens/elonezet-light.webp</image:loc>
+      <image:title>Kriptomérleg – Import előnézet</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://adamgyongyosi.github.io/kriptomerleg/screens/nyomkovetes-light.webp</image:loc>
+      <image:title>Kriptomérleg – Ügyletszintű nyomkövetés</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://adamgyongyosi.github.io/kriptomerleg/screens/adatok-light.webp</image:loc>
+      <image:title>Kriptomérleg – Adatok és mentés</image:title>
+    </image:image>
   </url>
 </urlset>

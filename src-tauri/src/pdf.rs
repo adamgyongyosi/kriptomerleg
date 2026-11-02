@@ -277,7 +277,7 @@ pub fn write(report: &Report, path: &std::path::Path) -> Result<(), String> {
         let size = 8.0;
         w.text(&t.date, size, MARGIN, false, INK);
         w.text(kind_label(&t.kind, t.amount), size, 36.0, false, INK);
-        w.text(&w.fonts.fit(&crate::capitalize(&t.source), size, 22.0), size, 64.0, false, INK);
+        w.text(&w.fonts.fit(&crate::source_label(&t.source), size, 22.0), size, 64.0, false, INK);
         w.text_right(&format!("{} {}", money(t.amount.abs(), 2), t.currency), size, 111.0, false, INK);
         let rate = if t.currency == "HUF" { "–".to_string() } else { format!("{}{}", money(t.rate, 2), if t.rate_source == "kézi" { " k" } else { "" }) };
         w.text_right(&rate, size, 133.0, false, INK);
@@ -305,7 +305,7 @@ pub fn write(report: &Report, path: &std::path::Path) -> Result<(), String> {
             if last != Some((*id, d.origin.as_str())) {
                 w.ensure(10.0);
                 w.gap(1.0);
-                let title = format!("{} · {} · {} · {} Ft", t.date, crate::capitalize(&t.source), kind_label(&t.kind, t.amount), ft(t.huf.abs()));
+                let title = format!("{} · {} · {} · {} Ft", t.date, crate::source_label(&t.source), kind_label(&t.kind, t.amount), ft(t.huf.abs()));
                 w.text(&title, 7.8, MARGIN, true, INK);
                 w.gap(3.4);
                 w.text(&w.fonts.fit(&d.origin, 6.6, PAGE_W - 2.0 * MARGIN), 6.6, MARGIN, false, MUTED);

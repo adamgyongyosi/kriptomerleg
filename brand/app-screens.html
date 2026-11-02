@@ -1,0 +1,18 @@
+<!doctype html>
+<!--
+  A weboldal képernyőképeinek (site/screens/*.webp) forrása: a valódi felület, a Tauri háttér helyett
+  bemutató adatokkal (brand/app-screens.json, a `dump_demo` teszt generálja a valódi adószámítással).
+  Megnyitás: `npm run dev`, majd http://localhost:1420/brand/app-screens.html
+  A képek elkészítése: `node brand/app-screens.mjs` (a fejlesztői szerver futása közben, lásd a fájl elejét).
+-->
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kriptomérleg – bemutató</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./app-screens.ts"></script>
+  </body>
+</html>
