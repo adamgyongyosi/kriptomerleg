@@ -188,7 +188,7 @@ jobs:
             echo "- **Windows:** \`*_windows_x64-setup.exe\` (telepítő) vagy \`*_windows_x64-portable.exe\` (telepítés nélkül)"
             echo "- **Linux (Debian/Ubuntu):** \`*_linux_amd64.deb\` → \`sudo apt install ./kriptomerleg_*.deb\`"
             echo "- **Linux (bármely):** \`*_linux_amd64.AppImage\` → \`chmod +x\`, majd futtatás"
-            echo "- **NixOS:** \`nix run git+ssh://git@github.com/${GITHUB_REPOSITORY}\`"
+            echo "- **NixOS:** \`nix run github:${GITHUB_REPOSITORY}\`"
             echo
             echo "## Változás"
             echo

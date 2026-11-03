@@ -6,6 +6,12 @@ A formátum a [Keep a Changelog](https://keepachangelog.com/hu/1.1.0/) ajánlás
 
 ## [Unreleased]
 
+## [0.3.29] – 2026-11-03
+
+### Javítva
+
+- A kiadás leírásában a NixOS-parancs a publikus repóhoz illő `nix run github:adamgyongyosi/kriptomerleg` (SSH helyett).
+
 ## [0.3.28] – 2026-11-03
 
 ### Változott
@@ -176,7 +182,8 @@ A formátum a [Keep a Changelog](https://keepachangelog.com/hu/1.1.0/) ajánlás
 - Első kiadás: EUR/HUF befizetések és kivételek MNB árfolyammal, 15% SZJA és adókiegyenlítés, bevallási segéd, régi Excel import, CSV export, grafikon.
 - Windows és Linux build, NixOS flake.
 
-[Unreleased]: https://github.com/adamgyongyosi/kriptomerleg/compare/v0.3.28...HEAD
+[Unreleased]: https://github.com/adamgyongyosi/kriptomerleg/compare/v0.3.29...HEAD
+[0.3.29]: https://github.com/adamgyongyosi/kriptomerleg/compare/v0.3.28...v0.3.29
 [0.3.28]: https://github.com/adamgyongyosi/kriptomerleg/compare/v0.3.21...v0.3.28
 [0.3.21]: https://github.com/adamgyongyosi/kriptomerleg/compare/v0.3.20...v0.3.21
 [0.3.20]: https://github.com/adamgyongyosi/kriptomerleg/compare/v0.3.19...v0.3.20
