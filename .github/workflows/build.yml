@@ -24,7 +24,10 @@ jobs:
     # PR-buildnél nincs környezet és kulcs (ezek a kiadások nem frissíthetők automatikusan).
     environment: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && 'release' || '' }}
     steps:
+      # Teljes történet: a verzió harmadik tagja a commitok száma.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Linux függőségek
         if: runner.os == 'Linux'
@@ -47,13 +50,14 @@ jobs:
       - run: npm ci
 
       # Kiadási verzió: tagnél a tag (v1.2.3 → 1.2.3), egyébként a package.json fő.al verziója
-      # + a futás sorszáma (pl. 0.3.12). Ez kerül az appba is, így a frissítő mindig nagyobb verziót lát.
+      # + a main ág commitjainak száma (pl. 0.3.28). Előre tudható, így a CHANGELOG.md-be is beírható;
+      # ez kerül az appba is, és mindig nő, így a frissítő mindig nagyobb verziót lát.
       - name: Verzió
         id: ver
         shell: bash
         run: |
           BASE=$(node -p "require('./package.json').version")
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; else V="${BASE%.*}.${GITHUB_RUN_NUMBER}"; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; else V="${BASE%.*}.$(git rev-list --count HEAD)"; fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "Verzió: $V"
 
@@ -146,7 +150,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Teljes történet: a verzió harmadik tagja a commitok száma.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/download-artifact@v4
         with:
@@ -154,13 +161,14 @@ jobs:
           merge-multiple: true
 
       # Kiadási verzió: tagnél a tag (v1.2.3 → 1.2.3), egyébként a package.json fő.al verziója
-      # + a futás sorszáma (pl. 0.3.12). Ez kerül az appba is, így a frissítő mindig nagyobb verziót lát.
+      # + a main ág commitjainak száma (pl. 0.3.28). Előre tudható, így a CHANGELOG.md-be is beírható;
+      # ez kerül az appba is, és mindig nő, így a frissítő mindig nagyobb verziót lát.
       - name: Verzió
         id: ver
         shell: bash
         run: |
           BASE=$(node -p "require('./package.json').version")
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; else V="${BASE%.*}.${GITHUB_RUN_NUMBER}"; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"; else V="${BASE%.*}.$(git rev-list --count HEAD)"; fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
           echo "Verzió: $V"
 
@@ -184,7 +192,11 @@ jobs:
             echo
             echo "## Változás"
             echo
-            git log -1 --pretty=format:'%s%n%n%b' "$GITHUB_SHA" | grep -v '^Co-Authored-By:'
+            # A CHANGELOG.md adott verziójú (vagy [Unreleased]) szakasza; ha üres, a commit üzenete.
+            NOTES=$(node scripts/changelog.mjs notes "$VERSION")
+            if [ -n "$NOTES" ]; then echo "$NOTES"; else git log -1 --pretty=format:'%s%n%n%b' "$GITHUB_SHA" | grep -v '^Co-Authored-By:'; fi
+            echo
+            echo "Teljes változásnapló: [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)"
           } > notes.md
 
       # Az automatikus frissítő ebből a fájlból tudja meg az új verziót (csak aláírt build esetén).

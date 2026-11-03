@@ -464,7 +464,7 @@ mod tests {
         assert_eq!((rows[0].kind.as_str(), rows[0].amount, rows[0].fee), ("sell", 196.6, 0.2));
     }
 
-    /// Az `examples/` mappa mintafájljai mindig beolvashatók maradjanak (a README is ezekre hivatkozik).
+    /// Az `examples/` mappa mintafájljai mindig beolvashatók maradjanak (a `docs/import.md` is ezekre hivatkozik).
     #[test]
     fn example_files_import() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../examples");
