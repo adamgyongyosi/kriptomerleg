@@ -24,7 +24,7 @@ serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 ureq = "2.12"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
-calamine = "0.37"
+calamine = "0.38"
 csv = "1"
 rust_xlsxwriter = "0.102"
 argon2 = "0.5"
